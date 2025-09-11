@@ -6,8 +6,13 @@
 }
 
 html, body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Crimson Text', Georgia, 'Times New Roman', serif;
     font-weight: 400;
+    font-family: 'Archivo Narrow', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Archivo Narrow', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Archivo Narrow', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Archivo Narrow', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Crimson Text', Georgia, 'Times New Roman', serif;
     font-size: 16px;
     line-height: 1.7;
     color: #22223B;
@@ -16,7 +21,7 @@ html, body {
 
 /* Container */
 .container {
-    width: 320px;
+    width: 380px;
     min-height: 400px;
     background: #ffffff;
     border: 1px solid #f3f4f6;
@@ -172,6 +177,7 @@ html, body {
     margin-bottom: 2px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -183,6 +189,7 @@ html, body {
     font-size: 15px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -233,6 +240,7 @@ html, body {
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;

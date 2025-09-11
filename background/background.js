@@ -138,7 +138,7 @@ async function handleEmailFetch(profileData, sendResponse) {
 
 // Try Hunter.io email finder API
 async function tryEmailFinder(domain, firstName, lastName, apiKey) {
-    try {
+   
         const url = `https://api.hunter.io/v2/email-finder?company=${encodeURIComponent(domain)}&first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${apiKey}`;
 
         console.log('=== CALLING HUNTER.IO EMAIL FINDER ===');
@@ -175,10 +175,6 @@ async function tryEmailFinder(domain, firstName, lastName, apiKey) {
         console.log('No email found via email finder');
         return null;
 
-    } catch (error) {
-        console.error('Email finder API error:', error);
-        throw error;
-    }
 }
 
 // Try Hunter.io domain search as fallback
