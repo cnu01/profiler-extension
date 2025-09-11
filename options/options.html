@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profiler - Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="app-info">
+                    <div class="app-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L15.09 8.26L22 9L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9L8.91 8.26L12 2Z" fill="white"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1>ProfileLink Settings</h1>
+                        <p>Configure your Hunter.io API key for email lookup</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- API Key Configuration Section -->
+            <section class="config-section">
+                <h2>Hunter.io API Configuration</h2>
+                <p class="section-description">
+                    To fetch email addresses from LinkedIn profiles, you need a Hunter.io API key. 
+                    Get your free API key from Hunter.io and enter it below.
+                </p>
+
+                <div class="api-key-form">
+                    <div class="form-group">
+                        <label for="apiKey">Hunter.io API Key</label>
+                        <div class="input-group">
+                            <input 
+                                type="password" 
+                                id="apiKey" 
+                                placeholder="Enter your Hunter.io API key"
+                                autocomplete="off"
+                                spellcheck="false"
+                            >
+                            <button type="button" id="toggleApiKey" class="toggle-btn" title="Show/Hide API Key">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <small class="form-help">Your API key is stored securely in your browser</small>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="testApiKey" class="btn btn-secondary" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            Test API Key
+                        </button>
+                        <button type="button" id="saveApiKey" class="btn btn-primary" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M19 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H16L20 7V20C20 20.5523 19.5523 21 19 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="7,3 7,8 15,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Status Card -->
+                <div id="apiStatus" class="api-status hidden">
+                    <div class="status-header">
+                        <div class="status-icon success">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h3>API Key Status: <span id="statusText">Connected</span></h3>
+                    </div>
+                    <div class="status-details">
+                        <div class="status-item">
+                            <span class="status-label">Plan:</span>
+                            <span id="planType">Free</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Searches Used:</span>
+                            <span id="requestsUsed">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Searches Available:</span>
+                            <span id="requestsAvailable">25</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Account Information -->
+                    <div id="accountInfo" class="account-info">
+                        <!-- Account details will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Error/Success Messages -->
+                <div id="messageContainer" class="message-container">
+                    <div id="successMessage" class="message success-message hidden">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Settings saved successfully!</span>
+                    </div>
+                    <div id="errorMessage" class="message error-message hidden">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+                            <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <span id="errorText">An error occurred</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Usage Instructions -->
+            <section class="info-section">
+                <h2>How to Use</h2>
+                <div class="usage-steps">
+                    <div class="usage-step">
+                        <div class="usage-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2L15.09 8.26L22 9L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9L8.91 8.26L12 2Z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <p><strong>Navigate</strong> to any LinkedIn profile page</p>
+                    </div>
+                    <div class="usage-step">
+                        <div class="usage-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                                <rect x="9" y="9" width="6" height="6" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <p><strong>Click</strong> the ProfileLink extension icon</p>
+                    </div>
+                    <div class="usage-step">
+                        <div class="usage-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2"/>
+                                <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <p><strong>View</strong> the extracted profile data and email</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>
