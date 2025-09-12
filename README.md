@@ -2,7 +2,6 @@
 
 A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API including Full Name, Email, Company, and Position.
 
-![Extension Preview](https://img.shields.io/badge/Chrome-Extension-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 ## 🚀 Features
@@ -16,8 +15,29 @@ A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API 
 - **Professional Icons**: Complete SVG icon set with magnifying glass design.
 - **Enhanced UX**: Popup closes on click-outside and ESC key, smooth interactions.
 - **Unified Design**: Consistent minimal theme across popup and settings pages.
+- **Visual Documentation**: Screenshots showcasing the clean, professional interface.
 
 ## 📸 Screenshots
+
+### Main Popup Interface
+![Profile Hunter Popup](screenshots/popup.png)
+
+The main popup interface showing:
+- Clean, minimal design with Nord blue accents
+- Professional magnifying glass icon branding
+- Settings button for easy configuration access
+- Profile data display with one-click copy functionality
+
+### Settings/Options Page
+![Profile Hunter Settings](screenshots/options.png)
+
+The settings page featuring:
+- Unified design matching the popup interface
+- Hunter.io API key configuration
+- API connectivity testing
+- Usage statistics and account information
+
+## 🎨 Design Features
 
 The extension features a minimalist interface with:
 - Clean white background with subtle gray accents
@@ -154,9 +174,9 @@ https://www.linkedin.com/in/raman-ghai-8bb7b418/
 linkedin-profiler-extension/
 ├── manifest.json              # Extension configuration and icon declarations
 ├── popup/
-│   ├── popup.html            # Main popup interface with favicon
+│   ├── popup.html            # Main popup interface with favicon and settings button
 │   ├── popup.css             # Modern minimal styling
-│   └── popup.js              # Enhanced popup functionality (ESC, click-outside)
+│   └── popup.js              # Enhanced popup functionality (ESC, click-outside, settings)
 ├── content/
 │   └── content.js            # LinkedIn data extraction
 ├── background/
@@ -171,6 +191,9 @@ linkedin-profiler-extension/
 │   ├── icon32.svg            # Extension management icon
 │   ├── icon48.svg            # Extension details icon
 │   └── icon128.svg           # Chrome Web Store icon
+├── screenshots/
+│   ├── popup.png             # Main popup interface screenshot
+│   └── options.png           # Settings page screenshot
 └── README.md                # This file (updated)
 ```
 
