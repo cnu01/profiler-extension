@@ -1,10 +1,7 @@
-// Background script for the LinkedIn Profile Profiler extension
-console.log('LinkedIn Profile Profiler: Background script loaded');
+// Background script for the Profile Hunter extension
 
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {
-    console.log('Extension installed:', details.reason);
-    
     if (details.reason === 'install') {
         // Open options page on first install
         chrome.runtime.openOptionsPage();
@@ -14,8 +11,8 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
-        case 'fetchEmail':
-            handleEmailFetch(request.data, sendResponse);
+        case 'fetchHunterData':
+            handleHunterDataFetch(request.data, sendResponse);
             return true; // Keep message channel open for async response
             
         case 'testApiKey':
@@ -27,8 +24,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// Handle email fetching via Hunter.io API
-async function handleEmailFetch(profileData, sendResponse) {
+// Handle Hunter.io data fetching
+async function handleHunterDataFetch(profileData, sendResponse) {
     try {
         // Get API key from storage
         const result = await chrome.storage.local.get(['hunterApiKey']);
@@ -47,7 +44,7 @@ async function handleEmailFetch(profileData, sendResponse) {
         if (!profileData) {
             sendResponse({ 
                 success: false, 
-                error: 'No profile data provided for email lookup',
+                error: 'No profile data provided for Hunter.io lookup',
                 code: 'MISSING_DATA'
             });
             return;
@@ -56,7 +53,7 @@ async function handleEmailFetch(profileData, sendResponse) {
         if (!profileData.fullName || profileData.fullName.trim() === '' || profileData.fullName === 'Unknown') {
             sendResponse({ 
                 success: false, 
-                error: 'Missing profile name for email lookup. Please ensure the LinkedIn profile is fully loaded.',
+                error: 'Missing profile name for Hunter.io lookup. Please ensure the LinkedIn profile is fully loaded.',
                 code: 'MISSING_NAME'
             });
             return;
@@ -66,29 +63,10 @@ async function handleEmailFetch(profileData, sendResponse) {
             profileData.organisation === 'Not specified' || profileData.organisation === 'Freelancer / Open to work' ||
             profileData.organisation === 'LangChain' || profileData.organisation.length < 3) {
             
-            if (profileData.organisation === 'LangChain') {
-                sendResponse({ 
-                    success: false, 
-                    error: 'The extracted company "LangChain" appears to be from the bio, not current employment. Please ensure this profile has clear current job information.',
-                    code: 'INVALID_COMPANY'
-                });
-            } else {
-                sendResponse({ 
-                    success: false, 
-                    error: 'Missing company information for email lookup. This profile may not have current employment data.',
-                    code: 'MISSING_COMPANY'
-                });
-            }
-            return;
-        }
-        
-        // Use organisation/company name directly as domain
-        const domain = profileData.organisation.trim().toLowerCase();
-        if (!domain) {
             sendResponse({ 
                 success: false, 
-                error: `Could not determine company domain from "${profileData.organisation}"`,
-                code: 'INVALID_DOMAIN'
+                error: 'Missing company information for Hunter.io lookup. This profile may not have current employment data.',
+                code: 'MISSING_COMPANY'
             });
             return;
         }
@@ -97,37 +75,35 @@ async function handleEmailFetch(profileData, sendResponse) {
         const nameParts = profileData.fullName.trim().split(/\s+/);
         const firstName = nameParts[0];
         const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+        const company = profileData.organisation.trim();
         
-        // Try Hunter.io email finder first
-        let emailData = await tryEmailFinder(domain, firstName, lastName, apiKey);
+        // Try Hunter.io email finder API
+        const hunterData = await fetchHunterEmailFinder(company, firstName, lastName, apiKey);
         
-        // If email finder fails, try domain search
-        if (!emailData) {
-            emailData = await tryDomainSearch(domain, firstName, lastName, apiKey);
-        }
-        
-        if (emailData) {
-            console.log('=== EMAIL FOUND SUCCESSFULLY ===');
-            console.log('Email details:', emailData);
-            console.log('Email address:', emailData.email);
-            console.log('Confidence score:', emailData.confidence);
-            console.log('Source:', emailData.source);
+        if (hunterData) {
             sendResponse({ 
                 success: true, 
-                data: emailData
+                data: {
+                    first_name: hunterData.first_name || firstName,
+                    last_name: hunterData.last_name || lastName,
+                    email: hunterData.email || 'Not available',
+                    company: hunterData.company || company,
+                    position: hunterData.position || 'Not specified',
+                    score: hunterData.score || 0,
+                    domain: hunterData.domain || '',
+                    verification: hunterData.verification || null
+                }
             });
         } else {
-            console.log('=== NO EMAIL FOUND ===');
-            console.log('Search attempted for:', `${firstName} ${lastName} at ${domain}`);
             sendResponse({ 
                 success: false, 
-                error: `No email found for ${firstName} ${lastName} at ${domain}`,
-                code: 'EMAIL_NOT_FOUND'
+                error: `No data found for ${firstName} ${lastName} at ${company}`,
+                code: 'DATA_NOT_FOUND'
             });
         }
         
     } catch (error) {
-        console.error('Background: Email fetch error:', error);
+        console.error('Background: Hunter.io fetch error:', error);
         sendResponse({ 
             success: false, 
             error: error.message,
@@ -136,23 +112,15 @@ async function handleEmailFetch(profileData, sendResponse) {
     }
 }
 
-// Try Hunter.io email finder API
-async function tryEmailFinder(domain, firstName, lastName, apiKey) {
-   
-        const url = `https://api.hunter.io/v2/email-finder?company=${encodeURIComponent(domain)}&first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${apiKey}`;
-
-        console.log('=== CALLING HUNTER.IO EMAIL FINDER ===');
-        console.log('URL:', url.replace(apiKey, '[HIDDEN]'));
-        console.log('Searching for:', `${firstName} ${lastName} at ${domain}`);
+// Fetch data from Hunter.io email finder API
+async function fetchHunterEmailFinder(company, firstName, lastName, apiKey) {
+    try {
+        const url = `https://api.hunter.io/v2/email-finder?company=${encodeURIComponent(company)}&first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${apiKey}`;
 
         const response = await fetch(url);
         const data = await response.json();
 
-        console.log('Email finder API response:', data);
-
         if (!response.ok) {
-            console.error('Hunter.io API error:', data);
-
             if (response.status === 401) {
                 throw new Error('Invalid Hunter.io API key');
             } else if (response.status === 429) {
@@ -162,84 +130,14 @@ async function tryEmailFinder(domain, firstName, lastName, apiKey) {
             }
         }
 
-        if (data.data && data.data.email) {
-            console.log('Email found via email finder:', data.data.email);
-            console.log('Confidence:', data.data.confidence);
-            return {
-                email: data.data.email,
-                confidence: data.data.confidence || 0,
-                source: 'email_finder'
-            };
+        if (data.data) {
+            return data.data;
         }
 
-        console.log('No email found via email finder');
         return null;
 
-}
-
-// Try Hunter.io domain search as fallback
-async function tryDomainSearch(domain, firstName, lastName, apiKey) {
-    try {
-        const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&limit=50&api_key=${apiKey}`;
-        
-        console.log('=== CALLING HUNTER.IO DOMAIN SEARCH ===');
-        console.log('Domain:', domain);
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        console.log('Domain search API response:', data);
-        
-        if (!response.ok) {
-            console.error('Hunter.io domain search error:', data);
-            return null;
-        }
-        
-        if (data.data && data.data.emails && data.data.emails.length > 0) {
-            const emails = data.data.emails;
-            const firstNameLower = firstName.toLowerCase();
-            const lastNameLower = lastName.toLowerCase();
-            
-            console.log(`Found ${emails.length} emails in domain. Looking for matches with ${firstNameLower} ${lastNameLower}`);
-            
-            // Look for exact matches first
-            for (const emailObj of emails) {
-                const email = emailObj.value.toLowerCase();
-                const emailPart = email.split('@')[0];
-                
-                if (emailPart.includes(firstNameLower) && emailPart.includes(lastNameLower)) {
-                    console.log('Found exact match:', emailObj.value);
-                    return {
-                        email: emailObj.value,
-                        confidence: emailObj.confidence || 50,
-                        source: 'domain_search_exact'
-                    };
-                }
-            }
-            
-            // Look for partial matches
-            for (const emailObj of emails) {
-                const email = emailObj.value.toLowerCase();
-                const emailPart = email.split('@')[0];
-                
-                if (emailPart.includes(firstNameLower) || emailPart.includes(lastNameLower)) {
-                    console.log('Found partial match:', emailObj.value);
-                    return {
-                        email: emailObj.value,
-                        confidence: Math.max(emailObj.confidence || 30, 30),
-                        source: 'domain_search_partial'
-                    };
-                }
-            }
-            
-            console.log('No matching emails found in domain search');
-        }
-        
-        return null;
-        
     } catch (error) {
-        console.error('Domain search API error:', error);
-        return null;
+        throw error;
     }
 }
 

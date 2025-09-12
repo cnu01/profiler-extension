@@ -403,3 +403,66 @@ html, body {
 .hidden {
     display: none !important;
 }
+
+/* =============================================================
+   Minimalist Override Theme (activated by body.minimal)
+   Accent: Nord Blue (#5E81AC)
+   ============================================================= */
+body.minimal {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --color-accent: #5E81AC;
+    --color-accent-hover: #506e91;
+    --color-bg: #ffffff;
+    --color-border: #ececec;
+    --color-border-soft: #f3f3f3;
+    --color-text: #111315;
+    --color-text-soft: #555b60;
+    --color-text-faint: #9aa1a6;
+    --color-danger: #c24141;
+    --radius-xs: 3px;
+    --radius-sm: 5px;
+    --radius-md: 8px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+body.minimal .container { width:360px; min-height:420px; border:1px solid var(--color-border); border-radius: var(--radius-md); }
+body.minimal .header { padding:14px 18px 12px; gap:10px; border-bottom:1px solid var(--color-border); }
+body.minimal .app-icon { color: var(--color-accent); width:22px; height:22px; }
+body.minimal .app-title { font-size:15px; font-weight:600; letter-spacing:.3px; color: var(--color-text); }
+body.minimal .settings-btn { color: var(--color-text-faint); }
+body.minimal .settings-btn:hover { color: var(--color-accent); }
+
+body.minimal .content { padding:18px 20px 22px; }
+body.minimal .profile-header { margin-bottom:26px; padding-bottom:18px; border-bottom:1px solid var(--color-border-soft); }
+body.minimal .profile-avatar { width:56px; height:56px; background:#f3f5f7; border:1px solid var(--color-border); }
+body.minimal .avatar-fallback { color:#c3c8cc; }
+body.minimal .profile-name { font-size:15px; margin-bottom:2px; font-weight:600; color: var(--color-text); }
+body.minimal .profile-title { font-size:13px; color: var(--color-text-soft); }
+
+body.minimal .profile-details { margin-bottom:24px; }
+body.minimal .detail-item { align-items:flex-start; padding:14px 0; border-bottom:1px solid var(--color-border-soft); }
+body.minimal .detail-icon { width:18px; height:18px; color: var(--color-text-faint); margin-top:2px; }
+body.minimal .detail-label { font-size:11px; color:#8a9196; letter-spacing:.55px; font-weight:500; margin-bottom:3px; }
+body.minimal .detail-value { font-size:13px; line-height:1.35; color: var(--color-text); }
+body.minimal .detail-link { color: var(--color-accent); font-size:13px; font-weight:500; }
+body.minimal .detail-link:hover { text-decoration:underline; }
+
+body.minimal .copy-btn { border:1px solid transparent; color: var(--color-text-faint); opacity:.55; padding:4px; border-radius: var(--radius-xs); transition:150ms ease; }
+body.minimal .copy-btn:hover { opacity:1; color: var(--color-accent); }
+
+body.minimal .action-buttons { gap:10px; margin-top:12px; }
+body.minimal .btn-primary { background: var(--color-accent); border:1px solid var(--color-accent); padding:10px 14px; font-size:13px; border-radius: var(--radius-sm); }
+body.minimal .btn-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+body.minimal .btn-secondary { background:#f6f7f8; border:1px solid var(--color-border); padding:10px 14px; font-size:13px; border-radius: var(--radius-sm); color: var(--color-text-soft); }
+body.minimal .btn-secondary:hover { background:#eef0f2; }
+
+body.minimal .error-icon { color: var(--color-danger); }
+body.minimal .error-state h2, body.minimal .settings-state h2 { font-size:16px; font-weight:600; }
+body.minimal .error-state p, body.minimal .settings-state p { font-size:13px; line-height:1.45; color: var(--color-text-soft); }
+body.minimal .example-url { background:#f7f8f9; border:1px solid var(--color-border); padding:14px; border-radius: var(--radius-sm); }
+body.minimal .example-url strong { font-size:11px; letter-spacing:.5px; }
+body.minimal .example-url code { font-size:11px; color: var(--color-accent); border-color: var(--color-border); padding:4px 6px; }

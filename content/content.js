@@ -1,5 +1,4 @@
-// Content script for LinkedIn profile data extraction
-console.log('LinkedIn Profile Profiler: Content script loaded');
+// Content script for the Profile Hunter extension
 
 // Enhanced LinkedIn data extraction with better selectors and error handling
 function extractLinkedInProfileData() {
@@ -67,24 +66,17 @@ function extractLinkedInProfileData() {
         }
 
         // Extract current position/designation and organization from Experience section
-        console.log('=== EXTRACTING EXPERIENCE DATA ===');
         const experienceSection = document.querySelector('[id*="experience"], [data-section="experience"], .experience-section, .pv-profile-section--experience, main section:has([id*="experience"])');
         
         if (experienceSection) {
-            console.log('Found experience section');
-            console.log('Experience section HTML preview:', experienceSection.innerHTML.substring(0, 500));
-
             // Dynamically select all experience entries using LinkedIn's DOM structure
             let experienceEntries = experienceSection.querySelectorAll('.pvs-list__item--line-separated, .pvs-entity, .experience-item, li[data-occludable-job-id], .artdeco-list__item, .pvs-list__item, li.pvs-list__paged-list-item, .pv-entity__position-group-pager li');
             if (experienceEntries.length === 0) {
                 experienceEntries = experienceSection.querySelectorAll('li, .profile-section-card, [data-entity-hovercard-id]');
             }
-            console.log(`Found ${experienceEntries.length} experience entries (structural selectors)`);
-
             // Extract job title and company name from the first (most recent) experience entry
             if (experienceEntries.length > 0) {
                 const firstEntry = experienceEntries[0];
-                console.log('Processing first experience entry:', firstEntry.innerHTML.substring(0, 200));
 
                 // Job title: usually in h3, strong, or span (not a link)
                 let jobTitle = null;
@@ -124,12 +116,10 @@ function extractLinkedInProfileData() {
                 if (companyName) {
                     data.organisation = companyName;
                 }
-                console.log(`Extracted job title: "${jobTitle}", company name: "${companyName}"`);
             }
             
             if (experienceEntries.length > 0) {
                 const firstEntry = experienceEntries[0];
-                console.log('Processing first experience entry:', firstEntry.innerHTML.substring(0, 200));
                 
                 // Extract job title (designation) - look for h3 or strong text elements
                 const titleSelectors = [
@@ -144,15 +134,12 @@ function extractLinkedInProfileData() {
                 let foundTitle = false;
                 for (const selector of titleSelectors) {
                     const titleElements = firstEntry.querySelectorAll(selector);
-                    console.log(`Title selector ${selector}: found ${titleElements.length} elements`);
                     
                     for (const titleElement of titleElements) {
                         const titleText = titleElement.textContent.trim();
-                        console.log(`Checking title text: "${titleText}"`);
                         
                         // Skip if this element contains a link (likely a company name)
                         if (titleElement.querySelector('a')) {
-                            console.log('Skipping title element containing link');
                             continue;
                         }
                         
@@ -189,14 +176,11 @@ function extractLinkedInProfileData() {
                             
                             if (hasJobPattern) {
                                 data.designation = titleText.replace(/\s+/g, ' ').trim();
-                                console.log('Found job title:', data.designation);
                                 foundTitle = true;
                                 break;
                             } else {
-                                console.log('Rejected title text (no job pattern)');
                             }
                         } else {
-                            console.log('Rejected title text (failed basic validation)');
                         }
                     }
                     if (foundTitle) break;
@@ -213,15 +197,12 @@ function extractLinkedInProfileData() {
                 let foundCompany = false;
                 for (const selector of companySelectors) {
                     const companyElements = firstEntry.querySelectorAll(selector);
-                    console.log(`Company selector ${selector}: found ${companyElements.length} elements`);
                     
                     for (const companyElement of companyElements) {
                         const companyText = companyElement.textContent.trim();
-                        console.log(`Checking company text: "${companyText}"`);
                         
                         // Skip empty elements or elements with logo/image text
                         if (!companyText || companyText.length < 3) {
-                            console.log('Skipping empty or too short company text');
                             continue;
                         }
                         
@@ -251,7 +232,6 @@ function extractLinkedInProfileData() {
                         
                         cleanCompanyText = cleanCompanyText.trim();
                         
-                        console.log(`Cleaned company text: "${cleanCompanyText}"`);
                         
                         // Check if this looks like a valid company name
                         if (cleanCompanyText.length > 2 && cleanCompanyText.length < 80 &&
@@ -264,11 +244,9 @@ function extractLinkedInProfileData() {
                             cleanCompanyText.charAt(0) === cleanCompanyText.charAt(0).toUpperCase()) {
                             
                             data.organisation = cleanCompanyText;
-                            console.log('Found company name:', data.organisation);
                             foundCompany = true;
                             break;
                         } else {
-                            console.log('Rejected company text (failed validation)');
                         }
                     }
                     if (foundCompany) break;
@@ -278,7 +256,6 @@ function extractLinkedInProfileData() {
         
         // Fallback: Try to find position from other locations if experience section approach failed
         if (!data.designation) {
-            console.log('=== FALLBACK: SEARCHING FOR DESIGNATION ===');
             const alternativeSelectors = [
                 'main [aria-labelledby*="experience"] h3',
                 'section[data-section="experience"] h3',
@@ -296,12 +273,10 @@ function extractLinkedInProfileData() {
             
             for (const selector of alternativeSelectors) {
                 const elements = document.querySelectorAll(selector);
-                console.log(`Selector ${selector}: found ${elements.length} elements`);
                 
                 for (let i = 0; i < elements.length; i++) {
                     const element = elements[i];
                     const text = element.textContent.trim();
-                    console.log(`Element ${i}: "${text}"`);
                     
                     if (text.length > 2 && text.length < 200 && 
                         !text.toLowerCase().includes('company') && 
@@ -319,7 +294,6 @@ function extractLinkedInProfileData() {
                             const jobTitle = parts[0].trim();
                             const company = parts[1].split(' | ')[0].trim(); // Take first company if multiple
                             
-                            console.log(`Found "Title @ Company" format: "${jobTitle}" @ "${company}"`);
                             
                             // Validate job title
                             if (jobTitle.length > 2 && jobTitle.length < 100) {
@@ -329,13 +303,11 @@ function extractLinkedInProfileData() {
                                     let cleanCompany = company.replace(/\.com$/, '').replace(/\.in$/, '').replace(/\.ai$/, '');
                                     data.organisation = cleanCompany;
                                 }
-                                console.log(`Set designation: "${data.designation}", organisation: "${data.organisation}"`);
                                 break;
                             }
                         } else {
                             // Regular job title
                             data.designation = text;
-                            console.log(`Set designation (regular): "${data.designation}"`);
                             break;
                         }
                     }
@@ -388,7 +360,6 @@ function extractLinkedInProfileData() {
         }
         
         if (expSection) {
-            console.log('=== SEARCHING FOR ORGANIZATION NAME ===');
             const companySelectors = [
                 '.pvs-entity__path-node a[data-field="experience_company_logo"]',
                 '.pvs-entity__summary-info a[href*="linkedin.com/company"]',
@@ -405,12 +376,10 @@ function extractLinkedInProfileData() {
             
             for (const selector of companySelectors) {
                 const elements = expSection.querySelectorAll(selector);
-                console.log(`Company selector ${selector}: found ${elements.length} elements`);
                 
                 for (let i = 0; i < Math.min(elements.length, 5); i++) {
                     const element = elements[i];
                     const text = element.textContent.trim();
-                    console.log(`Checking company element ${i}: "${text}"`);
                     
                     if (text.length > 2 && text.length < 80 &&
                         !text.toLowerCase().includes('show all') &&
@@ -446,17 +415,14 @@ function extractLinkedInProfileData() {
                             
                             cleanCompanyName = cleanCompanyName.replace(/\s+/g, ' ').trim();
                             
-                            console.log(`Cleaned company name: "${cleanCompanyName}"`);
                             
                             if (cleanCompanyName.length > 1 && cleanCompanyName.length < 60) {
                                 currentOrganisation = cleanCompanyName;
-                                console.log(`Selected organization: "${currentOrganisation}"`);
                                 foundOrganisation = true;
                                 break;
                             }
                         }
                     } else {
-                        console.log(`Rejected company text: "${text}" (failed validation)`);
                     }
                 }
                 
@@ -465,7 +431,6 @@ function extractLinkedInProfileData() {
             
             // Fallback to text analysis if structured approach fails
             if (!foundOrganisation) {
-                console.log('=== FALLBACK: TEXT ANALYSIS FOR ORGANIZATION ===');
                 const allTextElements = expSection.querySelectorAll('*');
                 const companyCandidates = [];
                 
@@ -483,12 +448,10 @@ function extractLinkedInProfileData() {
                     }
                 }
                 
-                console.log(`Found ${companyCandidates.length} company candidates`);
                 
                 for (let idx = 0; idx < Math.min(companyCandidates.length, 10); idx++) {
                     const candidate = companyCandidates[idx];
                     const text = candidate.text;
-                    console.log(`Candidate ${idx}: "${text}" (element: ${candidate.element}, href: ${candidate.href})`);
                     
                     if (!text.toLowerCase().includes('experience') &&
                         !text.toLowerCase().includes('see more') &&
@@ -526,16 +489,13 @@ function extractLinkedInProfileData() {
                         
                         cleanCompanyName = cleanCompanyName.trim();
                         
-                        console.log(`Cleaned candidate: "${cleanCompanyName}"`);
                         
                         if (cleanCompanyName.length > 2 && cleanCompanyName.length < 50) {
                             currentOrganisation = cleanCompanyName;
-                            console.log(`Selected from fallback: "${currentOrganisation}"`);
                             foundOrganisation = true;
                             break;
                         }
                     } else {
-                        console.log(`Rejected candidate "${text}" (failed validation)`);
                     }
                 }
             }
@@ -547,7 +507,6 @@ function extractLinkedInProfileData() {
         
         // Fallback to older selectors if still not found
         if (!data.organisation) {
-            console.log('=== FALLBACK: OLDER SELECTORS FOR ORGANIZATION ===');
             const orgSelectors = [
                 '.pv-entity__secondary-title',
                 'a[data-control-name="background_details_company"]',
@@ -563,18 +522,15 @@ function extractLinkedInProfileData() {
 
             for (const selector of orgSelectors) {
                 const orgElements = document.querySelectorAll(selector);
-                console.log(`Selector ${selector}: found ${orgElements.length} elements`);
                 
                 for (let i = 0; i < Math.min(orgElements.length, 3); i++) {
                     const orgElement = orgElements[i];
                     const orgText = orgElement.textContent.trim();
-                    console.log(`Element ${i}: "${orgText}"`);
                     
                     if (orgText) {
                         // Apply same filtering as above but check if it looks like a job title vs company
                         const looksLikeJobTitle = /^(associate|senior|junior|lead|principal|staff|director|manager|head|chief|vp|vice president|president|ceo|cto|cfo|architect|engineer|developer|analyst|scientist|specialist|consultant|coordinator|intern|trainee)/i.test(orgText);
                         
-                        console.log(`"${orgText}" looks like job title: ${looksLikeJobTitle}`);
                         
                         if (!orgText.toLowerCase().includes('logo') &&
                             !orgText.toLowerCase().includes('omega') &&
@@ -586,10 +542,8 @@ function extractLinkedInProfileData() {
                             orgText.length < 80) {
                             
                             data.organisation = orgText;
-                            console.log(`Selected from older selectors: "${data.organisation}"`);
                             break;
                         } else {
-                            console.log(`Rejected older selector text: "${orgText}" (blocked keywords or job title)`);
                         }
                     }
                 }
@@ -599,15 +553,12 @@ function extractLinkedInProfileData() {
 
         // Try to extract from "Open to work" section
         if (!data.organisation) {
-            console.log('=== CHECKING OPEN TO WORK SECTION ===');
             const openToWorkSection = document.querySelector('.pv-open-to-card, .open-to-work');
             if (openToWorkSection) {
-                console.log('Found open to work section');
                 const companyElements = openToWorkSection.querySelectorAll('.text-body-medium, .text-body-small');
                 for (let i = 0; i < companyElements.length; i++) {
                     const element = companyElements[i];
                     const text = element.textContent.trim();
-                    console.log(`Open to work element ${i}: "${text}"`);
                     
                     if (text.length > 2 && text.length < 100 && 
                         !text.toLowerCase().includes('open to') &&
@@ -618,12 +569,10 @@ function extractLinkedInProfileData() {
                         !text.toLowerCase().includes('consultants') &&
                         !text.toLowerCase().includes('private limited')) {
                         data.organisation = text;
-                        console.log(`Selected from open to work: "${data.organisation}"`);
                         break;
                     }
                 }
             } else {
-                console.log('No open to work section found');
             }
         }
 
@@ -633,7 +582,6 @@ function extractLinkedInProfileData() {
             if (parts.length >= 2) {
                 data.organisation = parts[parts.length - 1].trim();
                 data.designation = parts.slice(0, -1).join(' at ').trim();
-                console.log(`Extracted from "at" pattern - Designation: "${data.designation}", Organisation: "${data.organisation}"`);
             }
         }
 
@@ -645,7 +593,6 @@ function extractLinkedInProfileData() {
                 company = company.replace(/\.com$/, '').replace(/\.in$/, '').replace(/\.ai$/, '');
                 data.organisation = company;
                 data.designation = parts[0].trim(); // Keep only the job title
-                console.log(`Extracted from "@" pattern - Designation: "${data.designation}", Organisation: "${data.organisation}"`);
             }
         }
 
@@ -726,12 +673,6 @@ function extractLinkedInProfileData() {
             data.organisation = cleanOrg.trim();
         }
 
-        console.log('=== FINAL EXTRACTED DATA ===');
-        console.log('Full Name:', data.fullName);
-        console.log('Designation:', data.designation);
-        console.log('Organisation:', data.organisation);
-        console.log('Location:', data.location);
-        console.log('Profile Image:', data.profileImage ? 'Found' : 'Not found');
         
         return data;
 
@@ -769,7 +710,6 @@ function waitForProfileLoad() {
 
 // Message listener for popup requests
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('Content script received message:', request);
     
     if (request.action === 'ping') {
         sendResponse({ success: true, message: 'Content script is active' });
@@ -796,18 +736,14 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             waitForProfileLoad().then(() => {
-                console.log('Profile data ready for extraction');
             }).catch(() => {
-                console.log('Profile load failed');
             });
         }, 1000);
     });
 } else {
     setTimeout(() => {
         waitForProfileLoad().then(() => {
-            console.log('Profile data ready for extraction');
         }).catch(() => {
-            console.log('Profile load failed');
         });
     }, 1000);
 }

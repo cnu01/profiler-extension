@@ -8,20 +8,20 @@ const elements = {
     profileImage: document.getElementById('profileImage'),
     profileName: document.getElementById('profileName'),
     profileTitle: document.getElementById('profileTitle'),
+    fullNameValue: document.getElementById('fullNameValue'),
     emailValue: document.getElementById('emailValue'),
-    organizationValue: document.getElementById('organizationValue'),
-    designationValue: document.getElementById('designationValue'),
+    companyValue: document.getElementById('companyValue'),
+    positionValue: document.getElementById('positionValue'),
     linkedinLink: document.getElementById('linkedinLink'),
     
     // Buttons
-    settingsBtn: document.getElementById('settingsBtn'),
+    copyFullName: document.getElementById('copyFullName'),
     copyEmail: document.getElementById('copyEmail'),
-    copyOrganization: document.getElementById('copyOrganization'),
-    copyDesignation: document.getElementById('copyDesignation'),
+    copyCompany: document.getElementById('copyCompany'),
+    copyPosition: document.getElementById('copyPosition'),
     copyLinkedin: document.getElementById('copyLinkedin'),
     refreshBtn: document.getElementById('refreshBtn'),
-    analyzeAgainBtn: document.getElementById('analyzeAgainBtn'),
-    exportBtn: document.getElementById('exportBtn')
+    analyzeAgainBtn: document.getElementById('analyzeAgainBtn')
 };
 
 // State management
@@ -30,6 +30,20 @@ let currentProfileData = null;
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
     await initializePopup();
+});
+
+// Close popup when clicking outside
+document.addEventListener('click', (e) => {
+    if (e.target === document.body || e.target === document.documentElement) {
+        window.close();
+    }
+});
+
+// Handle escape key to close popup
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        window.close();
+    }
 });
 
 async function initializePopup() {
@@ -46,11 +60,13 @@ async function initializePopup() {
         // Show loading state
         showState('loading');
         
-        // Extract profile data
-        await extractProfileData(currentTab);
+        // Extract basic profile data for photo and LinkedIn URL
+        const linkedinData = await extractBasicProfileData(currentTab);
+        
+        // Fetch Hunter.io data in background
+        await fetchHunterDataInBackground(linkedinData);
         
     } catch (error) {
-        console.error('Error initializing popup:', error);
         showError('Initialization Error', 'Failed to initialize the extension. Please try again.');
     }
 }
@@ -61,7 +77,7 @@ function isLinkedInProfilePage(url) {
 
 async function ensureContentScriptInjected(tabId) {
     try {
-        // Try to ping the content script first with multiple attempts
+        // Try to ping the content script first
         for (let attempt = 1; attempt <= 3; attempt++) {
             try {
                 await chrome.tabs.sendMessage(tabId, { action: 'ping' });
@@ -79,30 +95,23 @@ async function ensureContentScriptInjected(tabId) {
             files: ['content/content.js']
         });
         
-        // Wait for the script to initialize and verify it's working
+        // Wait for the script to initialize
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Verify injection worked
-        try {
-            await chrome.tabs.sendMessage(tabId, { action: 'ping' });
-        } catch (error) {
-            throw new Error('Content script injection failed to activate');
-        }
+        await chrome.tabs.sendMessage(tabId, { action: 'ping' });
         
     } catch (error) {
-        console.error('Popup: Error injecting content script:', error);
-        throw new Error('Failed to inject content script: ' + error.message);
+        throw new Error('Failed to inject content script');
     }
 }
 
-async function extractProfileData(tab) {
+async function extractBasicProfileData(tab) {
     try {
-        console.log('Popup: Extracting data from tab:', tab.id);
-        
         // Ensure content script is injected
         await ensureContentScriptInjected(tab.id);
         
-        // Extract LinkedIn data
+        // Extract LinkedIn data for photo only
         const response = await Promise.race([
             chrome.tabs.sendMessage(tab.id, { action: 'extractProfileData' }),
             new Promise((_, reject) => 
@@ -111,66 +120,56 @@ async function extractProfileData(tab) {
         ]);
         
         if (!response?.success) {
-            throw new Error(response?.error || 'Could not extract profile data from this page');
+            throw new Error(response?.error || 'Could not extract basic profile data from this page');
         }
         
-        const linkedinData = response.data;
+        const profileData = response.data;
         
-        if (!linkedinData?.fullName) {
+        if (!profileData?.fullName) {
             throw new Error('No profile name found');
         }
         
-        // Store basic profile data
+        // Store LinkedIn URL and photo for display
         currentProfileData = {
-            ...linkedinData,
-            linkedinUrl: tab.url
+            linkedinUrl: tab.url,
+            profileImage: profileData.profileImage,
+            linkedinFullName: profileData.fullName || 'Unknown',
+            linkedinDesignation: profileData.designation || null,
+            linkedinOrganisation: profileData.organisation || null
         };
         
-        // Show profile data immediately
-        showProfileData(currentProfileData, tab.url);
+        // Show initial state with LinkedIn photo
+        showInitialProfileData(currentProfileData);
         
-        // Fetch email in background
-        fetchEmailInBackground(linkedinData);
+        return profileData;
         
     } catch (error) {
-        console.error('Popup: Error extracting profile data:', error);
-        showError('Extraction Failed', error.message);
+        throw error;
     }
 }
 
-async function fetchEmailInBackground(linkedinData) {
+async function fetchHunterDataInBackground(linkedinData) {
     try {
-        console.log('=== FETCHING EMAIL FROM HUNTER.IO ===');
-        console.log('LinkedIn data sent to Hunter:', linkedinData);
-        
-        const emailResponse = await chrome.runtime.sendMessage({
-            action: 'fetchEmail',
+        const hunterResponse = await chrome.runtime.sendMessage({
+            action: 'fetchHunterData',
             data: linkedinData
         });
         
-        console.log('Hunter.io API response:', emailResponse);
-        
-        if (emailResponse?.success) {
-            console.log('Email found successfully:', emailResponse.data);
-            elements.emailValue.textContent = emailResponse.data.email;
-            elements.copyEmail.style.display = 'flex';
-            currentProfileData.email = emailResponse.data.email;
-            currentProfileData.emailConfidence = emailResponse.data.confidence;
-            currentProfileData.emailSource = emailResponse.data.source;
+        if (hunterResponse?.success) {
+            // Update profile data with Hunter.io information
+            currentProfileData = {
+                ...currentProfileData,
+                ...hunterResponse.data
+            };
+            
+            showHunterProfileData(hunterResponse.data);
         } else {
-            console.log('Email not found. Error:', emailResponse?.error);
-            elements.emailValue.textContent = 'Not available';
-            elements.copyEmail.style.display = 'none';
+            showNoDataFound(hunterResponse?.error || 'No data available from Hunter.io');
         }
     } catch (error) {
-        console.error('Popup: Error fetching email:', error);
-        elements.emailValue.textContent = 'Not available';
-        elements.copyEmail.style.display = 'none';
+        showNoDataFound('Failed to fetch data from Hunter.io');
     }
 }
-
-// Remove the unused functions since we're now using background script
-// extractLinkedInData, getHunterApiKey, fetchEmailFromHunter, extractDomainFromCompany
 
 function showState(state) {
     // Hide all states first
@@ -203,56 +202,38 @@ function showState(state) {
                 elements.errorState.classList.remove('hidden');
             }
             break;
-        default:
-            console.warn('Unknown state:', state);
     }
 }
 
-function showProfileData(data, linkedinUrl) {
-    // Store the current profile data
-    currentProfileData = {
-        ...data,
-        linkedinUrl: linkedinUrl
-    };
-    
-    // Update profile information with fallbacks
+function showInitialProfileData(data) {
+    // Update profile information with LinkedIn data
     if (elements.profileName) {
-        elements.profileName.textContent = data.fullName || 'Unknown';
+        elements.profileName.textContent = data.linkedinFullName || 'Unknown';
     }
     
     if (elements.profileTitle) {
-        const designation = data.designation || 'Not specified';
-        const organization = data.organisation || 'Not specified';
-        
-        // Combine designation and organization for profile title
-        if (designation !== 'Not specified' && organization !== 'Not specified') {
-            elements.profileTitle.textContent = `${designation} at ${organization}`;
-        } else if (designation !== 'Not specified') {
-            elements.profileTitle.textContent = designation;
-        } else if (organization !== 'Not specified') {
-            elements.profileTitle.textContent = organization;
-        } else {
-            elements.profileTitle.textContent = 'No job information available';
-        }
+        elements.profileTitle.textContent = 'Fetching from Hunter.io...';
     }
     
-    if (elements.designationValue) {
-        elements.designationValue.textContent = data.designation || 'Not specified';
-    }
-    
-    if (elements.organizationValue) {
-        elements.organizationValue.textContent = data.organisation || 'Not specified';
+    // Set all Hunter.io fields to searching
+    if (elements.fullNameValue) {
+        elements.fullNameValue.textContent = 'Searching...';
     }
     
     if (elements.emailValue) {
-        // Don't overwrite if email is already set from API response
-        if (!elements.emailValue.textContent || elements.emailValue.textContent === 'Searching...') {
-            elements.emailValue.textContent = 'Searching...';
-        }
+        elements.emailValue.textContent = 'Searching...';
     }
     
-    if (elements.linkedinLink && linkedinUrl) {
-        elements.linkedinLink.href = linkedinUrl;
+    if (elements.companyValue) {
+        elements.companyValue.textContent = 'Searching...';
+    }
+    
+    if (elements.positionValue) {
+        elements.positionValue.textContent = 'Searching...';
+    }
+    
+    if (elements.linkedinLink && data.linkedinUrl) {
+        elements.linkedinLink.href = data.linkedinUrl;
     }
     
     // Update profile image
@@ -274,9 +255,97 @@ function showProfileData(data, linkedinUrl) {
     showState('success');
 }
 
-function showError(title, message) {
-    console.error(`${title}: ${message}`);
+function showHunterProfileData(data) {
+    // Update profile information with Hunter.io data
+    const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
     
+    if (elements.profileName) {
+        elements.profileName.textContent = fullName || 'Unknown';
+    }
+    
+    if (elements.profileTitle) {
+        const hunterPosition = data.position;
+        const hunterCompany = data.company;
+        
+        // Fall back to LinkedIn data if Hunter.io position is not available
+        const position = hunterPosition || currentProfileData.linkedinDesignation || 'Not specified';
+        const company = hunterCompany || currentProfileData.linkedinOrganisation || 'Not specified';
+        
+        if (position !== 'Not specified' && company !== 'Not specified') {
+            elements.profileTitle.textContent = `${position} at ${company}`;
+        } else if (position !== 'Not specified') {
+            elements.profileTitle.textContent = position;
+        } else if (company !== 'Not specified') {
+            elements.profileTitle.textContent = company;
+        } else {
+            elements.profileTitle.textContent = 'Hunter.io data retrieved';
+        }
+    }
+    
+    // Update Hunter.io specific fields
+    if (elements.fullNameValue) {
+        elements.fullNameValue.textContent = fullName || 'Not available';
+    }
+    
+    if (elements.emailValue) {
+        elements.emailValue.textContent = data.email || 'Not available';
+        if (data.email && data.email !== 'Not available') {
+            elements.copyEmail.style.display = 'flex';
+        } else {
+            elements.copyEmail.style.display = 'none';
+        }
+    }
+    
+    if (elements.companyValue) {
+        elements.companyValue.textContent = data.company || 'Not available';
+    }
+    
+    if (elements.positionValue) {
+        elements.positionValue.textContent = data.position || 'Not available';
+    }
+    
+    showState('success');
+}
+
+function showNoDataFound(message) {
+    // Update fields to show no data found
+    if (elements.fullNameValue) {
+        elements.fullNameValue.textContent = 'Not found';
+    }
+    
+    if (elements.emailValue) {
+        elements.emailValue.textContent = 'Not found';
+        elements.copyEmail.style.display = 'none';
+    }
+    
+    if (elements.companyValue) {
+        elements.companyValue.textContent = 'Not found';
+    }
+    
+    if (elements.positionValue) {
+        elements.positionValue.textContent = 'Not found';
+    }
+    
+    if (elements.profileTitle) {
+        // Fall back to LinkedIn data for profile title when Hunter.io data is not found
+        const linkedinPosition = currentProfileData.linkedinDesignation;
+        const linkedinCompany = currentProfileData.linkedinOrganisation;
+        
+        if (linkedinPosition && linkedinCompany) {
+            elements.profileTitle.textContent = `${linkedinPosition} at ${linkedinCompany}`;
+        } else if (linkedinPosition) {
+            elements.profileTitle.textContent = linkedinPosition;
+        } else if (linkedinCompany) {
+            elements.profileTitle.textContent = linkedinCompany;
+        } else {
+            elements.profileTitle.textContent = message || 'No data found in Hunter.io';
+        }
+    }
+    
+    showState('success');
+}
+
+function showError(title, message) {
     const errorSection = elements.errorState;
     if (errorSection) {
         const errorTitle = errorSection.querySelector('h2');
@@ -290,83 +359,35 @@ function showError(title, message) {
 }
 
 // Event listeners
-if (elements.settingsBtn) {
-    elements.settingsBtn.addEventListener('click', () => {
-        chrome.runtime.openOptionsPage();
+if (elements.copyFullName) {
+    elements.copyFullName.addEventListener('click', async () => {
+        if (currentProfileData && currentProfileData.first_name && currentProfileData.last_name) {
+            const fullName = `${currentProfileData.first_name} ${currentProfileData.last_name}`.trim();
+            await copyToClipboard(fullName, elements.copyFullName);
+        }
     });
 }
 
 if (elements.copyEmail) {
     elements.copyEmail.addEventListener('click', async () => {
         if (currentProfileData && currentProfileData.email) {
-            try {
-                await navigator.clipboard.writeText(currentProfileData.email);
-                
-                // Visual feedback
-                const originalContent = elements.copyEmail.innerHTML;
-                elements.copyEmail.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                        <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                `;
-                
-                setTimeout(() => {
-                    elements.copyEmail.innerHTML = originalContent;
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Failed to copy email:', error);
-            }
+            await copyToClipboard(currentProfileData.email, elements.copyEmail);
         }
     });
 }
 
-if (elements.copyOrganization) {
-    elements.copyOrganization.addEventListener('click', async () => {
-        if (currentProfileData && currentProfileData.organisation) {
-            try {
-                await navigator.clipboard.writeText(currentProfileData.organisation);
-                
-                // Visual feedback
-                const originalContent = elements.copyOrganization.innerHTML;
-                elements.copyOrganization.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                        <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                `;
-                
-                setTimeout(() => {
-                    elements.copyOrganization.innerHTML = originalContent;
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Failed to copy organization:', error);
-            }
+if (elements.copyCompany) {
+    elements.copyCompany.addEventListener('click', async () => {
+        if (currentProfileData && currentProfileData.company) {
+            await copyToClipboard(currentProfileData.company, elements.copyCompany);
         }
     });
 }
 
-if (elements.copyDesignation) {
-    elements.copyDesignation.addEventListener('click', async () => {
-        if (currentProfileData && currentProfileData.designation) {
-            try {
-                await navigator.clipboard.writeText(currentProfileData.designation);
-                
-                // Visual feedback
-                const originalContent = elements.copyDesignation.innerHTML;
-                elements.copyDesignation.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                        <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                `;
-                
-                setTimeout(() => {
-                    elements.copyDesignation.innerHTML = originalContent;
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Failed to copy designation:', error);
-            }
+if (elements.copyPosition) {
+    elements.copyPosition.addEventListener('click', async () => {
+        if (currentProfileData && currentProfileData.position) {
+            await copyToClipboard(currentProfileData.position, elements.copyPosition);
         }
     });
 }
@@ -374,24 +395,7 @@ if (elements.copyDesignation) {
 if (elements.copyLinkedin) {
     elements.copyLinkedin.addEventListener('click', async () => {
         if (currentProfileData && currentProfileData.linkedinUrl) {
-            try {
-                await navigator.clipboard.writeText(currentProfileData.linkedinUrl);
-                
-                // Visual feedback
-                const originalContent = elements.copyLinkedin.innerHTML;
-                elements.copyLinkedin.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                        <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                `;
-                
-                setTimeout(() => {
-                    elements.copyLinkedin.innerHTML = originalContent;
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Failed to copy LinkedIn URL:', error);
-            }
+            await copyToClipboard(currentProfileData.linkedinUrl, elements.copyLinkedin);
         }
     });
 }
@@ -408,19 +412,24 @@ if (elements.analyzeAgainBtn) {
     });
 }
 
-if (elements.exportBtn) {
-    elements.exportBtn.addEventListener('click', () => {
-        if (currentProfileData) {
-            const dataStr = JSON.stringify(currentProfileData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(dataBlob);
-            
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `linkedin_profile_${currentProfileData.fullName || 'unknown'}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(url);
-        }
-    });
+// Helper function for copy to clipboard with visual feedback
+async function copyToClipboard(text, buttonElement) {
+    try {
+        await navigator.clipboard.writeText(text);
+        
+        // Visual feedback
+        const originalContent = buttonElement.innerHTML;
+        buttonElement.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        
+        setTimeout(() => {
+            buttonElement.innerHTML = originalContent;
+        }, 1000);
+        
+    } catch (error) {
+        // Silently fail
+    }
 }

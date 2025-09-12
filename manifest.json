@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ProfileLink",
+  "name": "Profile Hunter",
   "version": "1.0.0",
-  "description": "Extract LinkedIn profile details and find email addresses using Hunter.io API",
+  "description": "Fetch LinkedIn profile details from Hunter.io API - Full Name, Email, Company, Position",
   "permissions": [
     "activeTab",
     "storage",
@@ -14,7 +14,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "ProfileLink"
+    "default_title": "Profile Hunter"
   },
   "content_scripts": [
     {

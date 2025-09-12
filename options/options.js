@@ -8,7 +8,6 @@ const elements = {
     successMessage: document.getElementById('successMessage'),
     errorMessage: document.getElementById('errorMessage'),
     errorText: document.getElementById('errorText'),
-    statusText: document.getElementById('statusText'),
     planType: document.getElementById('planType'),
     requestsUsed: document.getElementById('requestsUsed'),
     requestsAvailable: document.getElementById('requestsAvailable')
@@ -170,8 +169,6 @@ async function saveApiKey(apiKey) {
         showApiStatus(testResponse.data);
         showSuccess('Settings saved successfully!');
         
-        console.log('API key saved successfully');
-
     } catch (error) {
         console.error('Error saving API key:', error);
         showError('Failed to save settings. Please try again.');
@@ -181,8 +178,6 @@ async function saveApiKey(apiKey) {
 }
 
 function showApiStatus(data) {
-    elements.statusText.textContent = 'Connected';
-    
     // Display plan information with enhanced details
     const planDisplay = data.plan_name ? 
         `${data.plan_name} (Level ${data.plan_level || 0})` : 
@@ -193,64 +188,8 @@ function showApiStatus(data) {
     elements.requestsUsed.textContent = data.searches_used || data.requests_used || 0;
     elements.requestsAvailable.textContent = data.searches_available || data.requests_available || 0;
     
-    // Add additional account info if elements exist
-    const accountInfoElement = document.getElementById('accountInfo');
-    if (accountInfoElement) {
-        const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
-        accountInfoElement.innerHTML = `
-            <div class="account-details">
-                <h3>Account Information</h3>
-                <div class="account-info">
-                    ${fullName ? `
-                    <div class="info-item">
-                        <span class="info-label">Name</span>
-                        <span class="info-value">${fullName}</span>
-                    </div>` : ''}
-                    ${data.email ? `
-                    <div class="info-item">
-                        <span class="info-label">Email</span>
-                        <span class="info-value">${data.email}</span>
-                    </div>` : ''}
-                    ${data.plan_name ? `
-                    <div class="info-item">
-                        <span class="info-label">Plan</span>
-                        <span class="info-value">
-                            <span class="plan-badge">${data.plan_name}</span>
-                        </span>
-                    </div>` : ''}
-                    ${data.reset_date ? `
-                    <div class="info-item">
-                        <span class="info-label">Reset Date</span>
-                        <span class="info-value">${new Date(data.reset_date).toLocaleDateString()}</span>
-                    </div>` : ''}
-                </div>
-                <div class="usage-breakdown">
-                    <h4>Usage Breakdown</h4>
-                    <div class="usage-items">
-                        <div class="usage-item">
-                            <div class="usage-label">Searches</div>
-                            <div class="usage-value">${data.searches_used || 0}</div>
-                            <div class="usage-limit">of ${data.searches_available || 0}</div>
-                        </div>
-                        <div class="usage-item">
-                            <div class="usage-label">Verifications</div>
-                            <div class="usage-value">${data.verifications_used || 0}</div>
-                            <div class="usage-limit">of ${data.verifications_available || 0}</div>
-                        </div>
-                        ${(data.credits_available || 0) > 0 ? `
-                        <div class="usage-item">
-                            <div class="usage-label">Credits</div>
-                            <div class="usage-value">${data.credits_used || 0}</div>
-                            <div class="usage-limit">of ${data.credits_available || 0}</div>
-                        </div>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    elements.apiStatus.classList.remove('hidden', 'error');
-    elements.apiStatus.classList.add('success');
+    // Show the API status section
+    elements.apiStatus.classList.remove('hidden');
 }
 
 function hideApiStatus() {
