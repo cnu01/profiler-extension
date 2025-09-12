@@ -22,6 +22,7 @@ const elements = {
     copyLinkedin: document.getElementById('copyLinkedin'),
     refreshBtn: document.getElementById('refreshBtn'),
     analyzeAgainBtn: document.getElementById('analyzeAgainBtn'),
+    exportJsonBtn: document.getElementById('exportJsonBtn'),
     settingsBtn: document.getElementById('settingsBtn')
 };
 
@@ -125,6 +126,8 @@ async function extractBasicProfileData(tab) {
         }
         
         const profileData = response.data;
+
+        console.log('Basic profile data extracted:', profileData);
         
         if (!profileData?.fullName) {
             throw new Error('No profile name found');
@@ -169,7 +172,9 @@ async function fetchHunterDataInBackground(linkedinData) {
             // Update profile data with Hunter.io information
             currentProfileData = {
                 ...currentProfileData,
-                ...hunterResponse.data
+                ...hunterResponse.data,
+                // Override LinkedIn data with Hunter.io data where available
+                linkedinOrganisation: hunterResponse.data.company || currentProfileData.linkedinOrganisation
             };
             
             showHunterProfileData(hunterResponse.data);
@@ -458,6 +463,12 @@ if (elements.settingsBtn) {
     });
 }
 
+if (elements.exportJsonBtn) {
+    elements.exportJsonBtn.addEventListener('click', () => {
+        exportProfileDataAsJson();
+    });
+}
+
 // Helper function for copy to clipboard with visual feedback
 async function copyToClipboard(text, buttonElement) {
     try {
@@ -477,5 +488,89 @@ async function copyToClipboard(text, buttonElement) {
         
     } catch (error) {
         // Silently fail
+    }
+}
+
+// Export profile data as JSON file
+function exportProfileDataAsJson() {
+    try {
+        // Collect all available data
+        const exportData = {
+            exportInfo: {
+                timestamp: new Date().toISOString(),
+                exportedBy: "Profile Hunter Extension",
+                version: "1.0.0"
+            },
+            profile: {
+                linkedinData: {
+                    fullName: currentProfileData?.linkedinFullName || null,
+                    designation: currentProfileData?.linkedinDesignation || null,
+                    organisation: currentProfileData?.linkedinOrganisation || null,
+                    domain: currentProfileData?.linkedinDomain || null,
+                    profileImage: currentProfileData?.profileImage || null,
+                    linkedinUrl: currentProfileData?.linkedinUrl || null
+                },
+                hunterIoData: {
+                    fullName: elements.fullNameValue?.textContent !== 'Not Found' && elements.fullNameValue?.textContent !== 'Searching...' ? elements.fullNameValue?.textContent : null,
+                    email: elements.emailValue?.textContent !== 'Not Found' && elements.emailValue?.textContent !== 'Searching...' ? elements.emailValue?.textContent : null,
+                    company: elements.companyValue?.textContent !== 'Not Found' && elements.companyValue?.textContent !== 'Searching...' ? elements.companyValue?.textContent : null,
+                    position: elements.positionValue?.textContent !== 'Not Found' && elements.positionValue?.textContent !== 'Searching...' ? elements.positionValue?.textContent : null
+                }
+            }
+        };
+
+        // Create filename using full name with timestamp
+        const fullName = currentProfileData?.linkedinFullName || 'Unknown_Profile';
+        const cleanName = fullName.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+        const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const filename = `${cleanName}_${timestamp}.json`;
+
+        // Create and download the JSON file
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        // Create temporary download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Visual feedback
+        const originalContent = elements.exportJsonBtn.innerHTML;
+        elements.exportJsonBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Exported!
+        `;
+        
+        setTimeout(() => {
+            elements.exportJsonBtn.innerHTML = originalContent;
+        }, 2000);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+        
+        // Error feedback
+        const originalContent = elements.exportJsonBtn.innerHTML;
+        elements.exportJsonBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2"/>
+                <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Failed
+        `;
+        
+        setTimeout(() => {
+            elements.exportJsonBtn.innerHTML = originalContent;
+        }, 2000);
     }
 }
