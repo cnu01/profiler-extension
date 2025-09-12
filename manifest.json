@@ -3,6 +3,12 @@
   "name": "Profile Hunter",
   "version": "1.0.0",
   "description": "Fetch LinkedIn profile details from Hunter.io API - Full Name, Email, Company, Position",
+  "icons": {
+    "16": "icons/icon16.svg",
+    "32": "icons/icon32.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  },
   "permissions": [
     "activeTab",
     "storage",
@@ -14,7 +20,13 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Profile Hunter"
+    "default_title": "Profile Hunter",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "32": "icons/icon32.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    }
   },
   "content_scripts": [
     {
