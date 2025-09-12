@@ -21,7 +21,8 @@ const elements = {
     copyPosition: document.getElementById('copyPosition'),
     copyLinkedin: document.getElementById('copyLinkedin'),
     refreshBtn: document.getElementById('refreshBtn'),
-    analyzeAgainBtn: document.getElementById('analyzeAgainBtn')
+    analyzeAgainBtn: document.getElementById('analyzeAgainBtn'),
+    settingsBtn: document.getElementById('settingsBtn')
 };
 
 // State management
@@ -409,6 +410,12 @@ if (elements.refreshBtn) {
 if (elements.analyzeAgainBtn) {
     elements.analyzeAgainBtn.addEventListener('click', () => {
         initializePopup();
+    });
+}
+
+if (elements.settingsBtn) {
+    elements.settingsBtn.addEventListener('click', () => {
+        chrome.runtime.openOptionsPage();
     });
 }
 

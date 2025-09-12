@@ -28,6 +28,7 @@ The extension features a minimalist interface with:
 - Professional magnifying glass icons throughout
 - Consistent design between popup and settings pages
 - Enhanced popup behavior (ESC key and click-outside to close)
+- Easy settings access via dedicated button in popup header
 
 ## 🛠 Installation
 
@@ -47,11 +48,12 @@ The extension features a minimalist interface with:
 5. The extension should now appear in your Chrome toolbar
 
 ### Step 3: Configure Hunter.io API Key
-1. Click the extension icon and go to "Settings" by clicking the gear icon
-2. Get your free API key from [Hunter.io](https://hunter.io/pricing)
-3. Enter your API key in the settings page
-4. Click "Test API Key" to verify it works
-5. Click "Save Settings"
+1. Click the extension icon in your toolbar
+2. Click the settings button (⚙️) in the top-right corner of the popup
+3. Get your free API key from [Hunter.io](https://hunter.io/pricing)
+4. Enter your API key in the settings page
+5. Click "Test API Key" to verify it works
+6. Click "Save Settings"
 
 ## 🔑 Getting Your Hunter.io API Key
 
@@ -79,9 +81,9 @@ The extension features a minimalist interface with:
 6. **Close** the popup by pressing ESC or clicking outside
 
 ### Settings Access
-- Click the gear icon (⚙️) in the popup to access settings
-- Test your API key connectivity
-- View your Hunter.io usage statistics
+- Click the settings button (⚙️) in the top-right corner of the popup
+- Test your API key connectivity and view usage statistics
+- Access all Hunter.io configuration options
 
 ### Test Profile
 Try the extension with this LinkedIn profile:
