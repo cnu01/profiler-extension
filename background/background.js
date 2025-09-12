@@ -63,22 +63,26 @@ async function handleHunterDataFetch(profileData, sendResponse) {
             profileData.organisation === 'Not specified' || profileData.organisation === 'Freelancer / Open to work' ||
             profileData.organisation === 'LangChain' || profileData.organisation.length < 3) {
             
-            sendResponse({ 
-                success: false, 
-                error: 'Missing company information for Hunter.io lookup. This profile may not have current employment data.',
-                code: 'MISSING_COMPANY'
-            });
-            return;
+            // Check if we have domain as fallback
+            if (!profileData.domain) {
+                sendResponse({ 
+                    success: false, 
+                    error: 'Missing company information and domain for Hunter.io lookup. This profile may not have current employment data.',
+                    code: 'MISSING_COMPANY'
+                });
+                return;
+            }
         }
         
         // Parse name
         const nameParts = profileData.fullName.trim().split(/\s+/);
         const firstName = nameParts[0];
         const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
-        const company = profileData.organisation.trim();
+        const company = profileData.organisation?.trim() || null;
+        const domain = profileData.domain?.trim() || null;
         
-        // Try Hunter.io email finder API
-        const hunterData = await fetchHunterEmailFinder(company, firstName, lastName, apiKey);
+        // Try Hunter.io email finder API with both company and domain parameters
+        const hunterData = await fetchHunterEmailFinder(company, domain, firstName, lastName, apiKey);
         
         if (hunterData) {
             sendResponse({ 
@@ -97,7 +101,7 @@ async function handleHunterDataFetch(profileData, sendResponse) {
         } else {
             sendResponse({ 
                 success: false, 
-                error: `No data found for ${firstName} ${lastName} at ${company}`,
+                error: `No data found for ${firstName} ${lastName}`,
                 code: 'DATA_NOT_FOUND'
             });
         }
@@ -113,9 +117,25 @@ async function handleHunterDataFetch(profileData, sendResponse) {
 }
 
 // Fetch data from Hunter.io email finder API
-async function fetchHunterEmailFinder(company, firstName, lastName, apiKey) {
+async function fetchHunterEmailFinder(company, domain, firstName, lastName, apiKey) {
     try {
-        const url = `https://api.hunter.io/v2/email-finder?company=${encodeURIComponent(company)}&first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${apiKey}`;
+        // Build URL with available parameters
+        let url = `https://api.hunter.io/v2/email-finder?first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${apiKey}`;
+        
+        // Add company parameter if available
+        if (company && company.length >= 3 && 
+            company !== 'Not specified' && 
+            company !== 'Freelancer / Open to work' && 
+            company !== 'LangChain') {
+            url += `&company=${encodeURIComponent(company)}`;
+        }
+        
+        // Add domain parameter if available
+        if (domain) {
+            url += `&domain=${encodeURIComponent(domain)}`;
+        }
+        
+        console.log('Hunter.io API call with:', { company, domain, firstName, lastName });
 
         const response = await fetch(url);
         const data = await response.json();

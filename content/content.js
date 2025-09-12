@@ -6,6 +6,7 @@ function extractLinkedInProfileData() {
         fullName: null,
         designation: null,
         organisation: null,
+        domain: null,
         profileImage: null,
         location: null,
         summary: null
@@ -37,7 +38,13 @@ function extractLinkedInProfileData() {
         }
 
         // Extract experience data from the new LinkedIn DOM structure
-        const experienceSection = document.querySelector('[id*="experience"], [data-section="experience"], .experience-section, .pv-profile-section--experience, main section:has([id*="experience"])');
+        // Extract organization/company name
+        console.log('Extracting organization...');
+        let companyName = null;
+
+        // Try to find company/organization with enhanced logic
+        const experienceSection = document.querySelector('#experience')?.parentElement?.nextElementSibling || 
+                                  document.querySelector('[data-view-name="profile-component-entity"]');
         
         if (experienceSection) {
             // Get the first experience entry (most recent)
@@ -53,16 +60,30 @@ function extractLinkedInProfileData() {
                 ];
                 
                 // First, try to extract company name from the secondary line pattern
-                // Look for "Company Name · Full-time" pattern in .t-14.t-normal spans
+                // Look for "Company Name · Full-time" pattern OR standalone "Company Name" in .t-14.t-normal spans
                 const secondaryPatterns = firstExperienceItem.querySelectorAll('.t-14.t-normal span[aria-hidden="true"]');
                 for (const element of secondaryPatterns) {
                     const text = element.textContent.trim();
+                    
                     if (text.includes(' · ')) {
+                        // Pattern: "Company Name · Employment-type"
                         const companyPart = text.split(' · ')[0].trim();
                         if (companyPart.length > 2 && companyPart.length < 80 && 
                             !isPositionText(companyPart) && 
                             !isDateText(companyPart)) {
                             data.organisation = companyPart;
+                            break;
+                        }
+                    } else {
+                        // Pattern: Standalone "Company Name" (like "Olacabs.com")
+                        if (text.length > 2 && text.length < 80 && 
+                            !isPositionText(text) && 
+                            !isDateText(text) &&
+                            !hasPositionCharacteristics(text) &&
+                            !text.toLowerCase().includes('present') &&
+                            !text.toLowerCase().includes('mo') &&
+                            !text.toLowerCase().includes('yr')) {
+                            data.organisation = text;
                             break;
                         }
                     }
@@ -152,6 +173,11 @@ function extractLinkedInProfileData() {
             }
         }
 
+        // Extract company domain
+        console.log('Extracting company domain...');
+        data.domain = extractCompanyDomain();
+        console.log('Found company domain:', data.domain);
+
         // Extract profile image
         const imageSelectors = [
             'img[data-anonymize="headshot-photo"]',
@@ -239,6 +265,43 @@ function isDateText(text) {
     return datePatterns.some(pattern => pattern.test(text));
 }
 
+// Helper function to convert LinkedIn company slug to potential domain
+function convertSlugToDomain(slug) {
+    // Remove common suffixes and convert LinkedIn company slug to potential domain
+    const cleanSlug = slug.toLowerCase()
+        .replace(/-inc$|inc$/i, '')
+        .replace(/-llc$|llc$/i, '')
+        .replace(/-ltd$|ltd$/i, '')
+        .replace(/-corp$|corp$/i, '')
+        .replace(/-company$|company$/i, '')
+        .replace(/-technologies$|technologies$/i, '')
+        .replace(/-solutions$|solutions$/i, '')
+        .replace(/-services$|services$/i, '')
+        .replace(/-consulting$|consulting$/i, '')
+        .replace(/-group$|group$/i, '')
+        .replace(/^the-/, '')
+        .replace(/-+/g, '');
+    
+    return cleanSlug + '.com';
+}
+
+// Helper function to extract company domain from LinkedIn
+function extractCompanyDomain() {
+    // Look for company links in experience section
+    const companyLinks = document.querySelectorAll('a[href*="/company/"]');
+    
+    for (const link of companyLinks) {
+        const href = link.href;
+        const companyMatch = href.match(/\/company\/([^\/\?]+)/);
+        if (companyMatch) {
+            const companySlug = companyMatch[1];
+            return convertSlugToDomain(companySlug);
+        }
+    }
+    
+    return null;
+}
+
 // Wait for the page to be fully loaded
 function waitForProfileLoad() {
     return new Promise((resolve, reject) => {
@@ -292,15 +355,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
-            waitForProfileLoad().then(() => {
-            }).catch(() => {
-            });
+            waitForProfileLoad();
         }, 1000);
     });
 } else {
     setTimeout(() => {
-        waitForProfileLoad().then(() => {
-        }).catch(() => {
-        });
+        waitForProfileLoad();
     }, 1000);
 }

@@ -136,8 +136,17 @@ async function extractBasicProfileData(tab) {
             profileImage: profileData.profileImage,
             linkedinFullName: profileData.fullName || 'Unknown',
             linkedinDesignation: profileData.designation || null,
-            linkedinOrganisation: profileData.organisation || null
+            linkedinOrganisation: profileData.organisation || null,
+            linkedinDomain: profileData.domain || null
         };
+        
+        // Log extraction results for debugging
+        console.log('Extracted LinkedIn data:', {
+            fullName: profileData.fullName,
+            designation: profileData.designation,
+            organisation: profileData.organisation,
+            domain: profileData.domain
+        });
         
         // Show initial state with LinkedIn photo
         showInitialProfileData(currentProfileData);
