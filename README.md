@@ -23,7 +23,7 @@ A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API 
 ## 📸 Screenshots
 
 ### Main Popup Interface
-![Profile Hunter Popup](screenshots/popup1.png)(screenshots/popup2.png)
+<img src="screenshots/popup1.png" width="300" alt="Profile Hunter Popup 1"> <img src="screenshots/popup2.png" width="300" alt="Profile Hunter Popup 2">
 
 The main popup interface showing:
 - Clean, minimal design with Nord blue accents
