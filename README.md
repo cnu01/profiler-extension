@@ -1,13 +1,16 @@
 # Profile Hunter Chrome Extension
 
-A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API including Full Name, Email, Company, and Position.
+A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API including Full Name, Email, Company, and Position with advanced domain extraction and JSON export capabilities.
 
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 ## 🚀 Features
 
-- **Hunter.io Integration**: Fetches comprehensive profile data from Hunter.io API.
+- **Hunter.io Integration**: Fetches comprehensive profile data from Hunter.io API with dual search strategy.
 - **Complete Profile Data**: Returns Full Name, Email, Company/Organization, and Position.
+- **Domain Extraction**: Automatically extracts company domains from LinkedIn for enhanced Hunter.io lookup.
+- **Dual Search Strategy**: Uses both company name AND domain for maximum data discovery success.
+- **JSON Export**: Export complete profile data as downloadable JSON files with user's name.
 - **LinkedIn Photo Support**: Displays LinkedIn profile photos alongside Hunter.io data.
 - **Modern Minimalist UI**: Clean, aesthetic interface with Nord blue accent color (#5E81AC).
 - **Real-time API Testing**: Tests Hunter.io connectivity and provides usage statistics.
@@ -20,7 +23,7 @@ A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API 
 ## 📸 Screenshots
 
 ### Main Popup Interface
-![Profile Hunter Popup](screenshots/popup.png)
+![Profile Hunter Popup](screenshots/popup1.png)(screenshots/popup2.png)
 
 The main popup interface showing:
 - Clean, minimal design with Nord blue accents
@@ -80,7 +83,7 @@ The extension features a minimalist interface with:
 ### Free Plan (25 requests/month)
 1. Visit [Hunter.io](https://hunter.io/pricing)
 2. Sign up for a free account
-3. Verify your email address
+3. Verify your company email address
 4. Navigate to your API dashboard
 5. Copy your API key
 6. Paste it in the extension settings
@@ -95,10 +98,24 @@ The extension features a minimalist interface with:
 ### Basic Usage
 1. **Navigate** to any LinkedIn profile page (e.g., `linkedin.com/in/username`)
 2. **Click** the Profile Hunter extension icon in your Chrome toolbar
-3. **Wait** for the extension to fetch profile data from Hunter.io
+3. **Wait** for the extension to fetch profile data from Hunter.io using dual search strategy
 4. **View** the results in the popup window
 5. **Copy** any data field with one click
-6. **Close** the popup by pressing ESC or clicking outside
+6. **Export** complete data as JSON using the "Export JSON" button
+7. **Close** the popup by pressing ESC or clicking outside
+
+### New Features
+#### JSON Export
+- Click the **"Export JSON"** button next to the Refresh button
+- Downloads a file named `{UserName}_{Date}.json` (e.g., `John_Doe_2025-09-12.json`)
+- Contains both LinkedIn scraped data and Hunter.io verified data
+- Perfect for data analysis, CRM import, or backup purposes
+
+#### Enhanced Data Discovery
+- **Dual Search**: Uses both company name ("Masai School") and domain ("masaischool.com") 
+- **Smart Fallback**: If company name search fails, automatically tries domain search
+- **Domain Extraction**: Automatically extracts domains from LinkedIn company URLs
+- **Higher Success Rate**: Significantly improved data discovery compared to single search method
 
 ### Settings Access
 - Click the settings button (⚙️) in the top-right corner of the popup
@@ -114,10 +131,12 @@ https://www.linkedin.com/in/raman-ghai-8bb7b418/
 ### What Data is Fetched from Hunter.io
 - **Full Name**: First and last name from Hunter.io database
 - **Email**: Professional email address 
-- **Company**: Current employer/organization
+- **Company**: Current employer/organization (prioritizes Hunter.io data over LinkedIn metadata)
 - **Position**: Job title/designation
+- **Domain**: Company website domain (extracted from LinkedIn or Hunter.io)
 - **Profile Photo**: LinkedIn profile picture (for display)
 - **Profile URL**: Direct link to LinkedIn profile
+- **Verification Status**: Email verification details from Hunter.io
 
 ### Hunter.io API Response Format
 ```json
@@ -138,6 +157,49 @@ https://www.linkedin.com/in/raman-ghai-8bb7b418/
 }
 ```
 
+### JSON Export Format
+The exported JSON file contains comprehensive profile data:
+```json
+{
+  "exportInfo": {
+    "timestamp": "2025-09-12T12:02:53.611Z",
+    "exportedBy": "Profile Hunter Extension",
+    "version": "1.0.0"
+  },
+  "profile": {
+    "linkedinData": {
+      "fullName": "John Doe",
+      "designation": "Software Engineer",
+      "organisation": "Company Name",
+      "domain": "company.com",
+      "profileImage": "https://media.licdn.com/...",
+      "linkedinUrl": "https://www.linkedin.com/in/johndoe/"
+    },
+    "hunterIoData": {
+      "fullName": "John Doe",
+      "email": "john@company.com",
+      "company": "Company Name",
+      "position": "Software Engineer"
+    }
+  }
+}
+```
+
+### Advanced Search Strategy
+The extension uses a sophisticated dual-search approach:
+
+1. **Primary Search**: Company name extraction from LinkedIn
+   - `api.hunter.io/v2/email-finder?company=Masai%20School&first_name=John&last_name=Doe`
+
+2. **Fallback Search**: Domain extraction from LinkedIn company URLs
+   - Extracts from `/company/masaischool/` → `masaischool.com`
+   - `api.hunter.io/v2/email-finder?domain=masaischool.com&first_name=John&last_name=Doe`
+
+3. **Combined Search**: Both parameters in single API call
+   - `api.hunter.io/v2/email-finder?company=Masai%20School&domain=masaischool.com&first_name=John&last_name=Doe`
+
+This approach significantly increases data discovery success rates.
+
 ## 🔧 Troubleshooting
 
 ### Common Issues
@@ -149,42 +211,51 @@ https://www.linkedin.com/in/raman-ghai-8bb7b418/
 
 #### "No Data Found" Error
 - The person might not be in Hunter.io's database
-- Try with different LinkedIn profiles
+- Try with different LinkedIn profiles with more common companies
 - Check your Hunter.io API key in settings
-
-#### "API Key Required" Error
-- Configure your Hunter.io API key in settings
-- Verify the API key is correct by testing it
-- Check your Hunter.io account status
+- The extension now tries both company name and domain - if both fail, the person/company may not be in Hunter.io's database
 
 #### "Email Not Found" Error
 - Hunter.io doesn't have email data for this person/company
 - Try with profiles from larger, well-known companies
+- The dual search strategy increases success rates significantly
 - This is normal - not all emails are discoverable
+
+#### JSON Export Issues
+- **File not downloading**: Check browser's download settings and popup blockers
+- **Empty data**: Ensure Hunter.io data was successfully fetched before exporting
+- **Filename issues**: Special characters in names are automatically cleaned for valid filenames
 
 ### API Rate Limits
 - Free Hunter.io plan: 25 requests/month
+- **Optimized Usage**: Single API call now uses both company and domain parameters
 - Requests reset monthly
 - Check usage in extension settings
 - Upgrade Hunter.io plan if needed
+
+### Data Quality Notes
+- **Hunter.io Priority**: Extension prioritizes verified Hunter.io data over LinkedIn scraped metadata
+- **Smart Mapping**: Company data from Hunter.io automatically overrides LinkedIn scraped company names
+- **Domain Intelligence**: Automatically cleans and converts LinkedIn company slugs to potential domains
+- **Fallback Protection**: Uses LinkedIn data only when Hunter.io data is unavailable
 
 ## 📁 Project Structure
 
 ```
 linkedin-profiler-extension/
-├── manifest.json              # Extension configuration and icon declarations
+├── manifest.json              # Extension configuration and permissions
 ├── popup/
-│   ├── popup.html            # Main popup interface with favicon and settings button
+│   ├── popup.html            # Main popup interface with export button
 │   ├── popup.css             # Modern minimal styling
-│   └── popup.js              # Enhanced popup functionality (ESC, click-outside, settings)
+│   └── popup.js              # Enhanced popup functionality with JSON export
 ├── content/
-│   └── content.js            # LinkedIn data extraction
+│   └── content.js            # LinkedIn data extraction with domain intelligence
 ├── background/
-│   └── background.js         # Hunter.io API integration
+│   └── background.js         # Hunter.io API integration with dual search
 ├── options/
 │   ├── options.html          # Settings page with unified design
 │   ├── options.css           # Minimal settings styling 
-│   └── options.js            # Settings functionality (error-free)
+│   └── options.js            # Settings functionality
 ├── icons/
 │   ├── favicon.svg           # Browser tab favicon (16x16)
 │   ├── icon16.svg            # Extension toolbar icon
@@ -194,7 +265,7 @@ linkedin-profiler-extension/
 ├── screenshots/
 │   ├── popup.png             # Main popup interface screenshot
 │   └── options.png           # Settings page screenshot
-└── README.md                # This file (updated)
+└── README.md                # Complete documentation
 ```
 
 ## 🛡 Privacy & Security
@@ -208,13 +279,23 @@ linkedin-profiler-extension/
 ## 🚀 Technical Details
 
 ### Technologies Used
-- **Manifest V3**: Latest Chrome extension standard with proper icon declarations
-- **Vanilla JavaScript**: No external dependencies, optimized code
+- **Manifest V3**: Latest Chrome extension standard with proper permissions
+- **Vanilla JavaScript**: No external dependencies, optimized performance
 - **CSS Grid/Flexbox**: Modern responsive design with CSS variables
-- **Chrome APIs**: Storage, tabs, scripting, runtime
+- **Chrome APIs**: Storage, tabs, scripting, runtime, downloads
 - **Inter Font**: Modern, readable UI typography
 - **SVG Icons**: Scalable vector graphics for crisp display at all sizes
 - **Nord Color Palette**: Professional blue accent (#5E81AC) for consistency
+- **Blob API**: Client-side JSON file generation for exports
+
+### Key Improvements (Latest Version)
+- **Domain Extraction**: Intelligent parsing of LinkedIn company URLs to domains
+- **Dual Search Strategy**: Company name + domain search for higher success rates
+- **JSON Export**: Complete profile data export functionality
+- **Data Prioritization**: Hunter.io verified data takes precedence over LinkedIn metadata
+- **Smart Company Mapping**: Automatic conversion of LinkedIn company slugs to domains
+- **Enhanced Error Handling**: Better feedback for various failure scenarios
+- **Optimized API Usage**: Single API call with multiple parameters
 
 ### Browser Support
 - Chrome 88+
