@@ -1,6 +1,6 @@
 // Content script for the Profile Hunter extension
 
-// Enhanced LinkedIn data extraction with better selectors and error handling
+// Enhanced LinkedIn data extraction focused on proper DOM structure
 function extractLinkedInProfileData() {
     const data = {
         fullName: null,
@@ -36,571 +36,119 @@ function extractLinkedInProfileData() {
             }
         }
 
-        // Try alternative approach - look for any text that looks like a name
-        if (!data.fullName) {
-            const allText = document.body.innerText;
-            const lines = allText.split('\n');
-            
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (trimmed.length > 5 && trimmed.length < 50) {
-                    const words = trimmed.split(' ');
-                    if (words.length >= 2 && words.length <= 4) {
-                        const looksLikeName = words.every(word => 
-                            word.length > 0 && 
-                            word[0] === word[0].toUpperCase() &&
-                            /^[A-Za-z\s.-]+$/.test(word)
-                        );
-                        
-                        if (looksLikeName && !trimmed.toLowerCase().includes('engineer') && 
-                            !trimmed.toLowerCase().includes('developer') && 
-                            !trimmed.toLowerCase().includes('manager') &&
-                            !trimmed.toLowerCase().includes('linkedin') &&
-                            !trimmed.toLowerCase().includes('profile')) {
-                            data.fullName = trimmed;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Extract current position/designation and organization from Experience section
+        // Extract experience data from the new LinkedIn DOM structure
         const experienceSection = document.querySelector('[id*="experience"], [data-section="experience"], .experience-section, .pv-profile-section--experience, main section:has([id*="experience"])');
         
         if (experienceSection) {
-            // Dynamically select all experience entries using LinkedIn's DOM structure
-            let experienceEntries = experienceSection.querySelectorAll('.pvs-list__item--line-separated, .pvs-entity, .experience-item, li[data-occludable-job-id], .artdeco-list__item, .pvs-list__item, li.pvs-list__paged-list-item, .pv-entity__position-group-pager li');
-            if (experienceEntries.length === 0) {
-                experienceEntries = experienceSection.querySelectorAll('li, .profile-section-card, [data-entity-hovercard-id]');
-            }
-            // Extract job title and company name from the first (most recent) experience entry
-            if (experienceEntries.length > 0) {
-                const firstEntry = experienceEntries[0];
-
-                // Job title: usually in h3, strong, or span (not a link)
-                let jobTitle = null;
-                const jobTitleSelectors = ['h3', 'strong', 'span:not(a)', '.pvs-entity__caption-wrapper span:not(a)', '.pvs-entity__caption-wrapper div:not(a)'];
-                for (const selector of jobTitleSelectors) {
-                    const el = firstEntry.querySelector(selector);
-                    if (el && el.textContent.trim().length > 2 && el.textContent.trim().length < 100) {
-                        jobTitle = el.textContent.trim();
-                        break;
-                    }
-                }
-
-                // Company name: usually in a link to company page
-                let companyName = null;
-                const companySelectors = ['a[href*="linkedin.com/company"]', 'a[data-field*="company"]', '.pvs-entity__caption-wrapper a', '.pvs-entity__summary-info a'];
-                for (const selector of companySelectors) {
-                    const el = firstEntry.querySelector(selector);
-                    if (el && el.textContent.trim().length > 2 && el.textContent.trim().length < 80) {
-                        companyName = el.textContent.trim();
-                        break;
-                    }
-                }
-
-                // Fallback: If company name not found, try to extract from job title (e.g., "Data Scientist @ NoBroker.com")
-                if (!companyName && jobTitle && jobTitle.includes(' @ ')) {
-                    const parts = jobTitle.split(' @ ');
-                    if (parts.length === 2) {
-                        companyName = parts[1].split(' | ')[0].replace(/\.com$|\.in$|\.ai$/,'').trim();
-                        jobTitle = parts[0].trim();
-                    }
-                }
-
-                // Set extracted values
-                if (jobTitle) {
-                    data.designation = jobTitle;
-                }
-                if (companyName) {
-                    data.organisation = companyName;
-                }
-            }
+            // Get the first experience entry (most recent)
+            const firstExperienceItem = experienceSection.querySelector('.artdeco-list__item, .pvs-list__item, li');
             
-            if (experienceEntries.length > 0) {
-                const firstEntry = experienceEntries[0];
-                
-                // Extract job title (designation) - look for h3 or strong text elements
-                const titleSelectors = [
-                    'h3',
-                    '[aria-hidden="true"]',
-                    '.visually-hidden',
-                    'strong',
-                    '.pvs-entity__caption-wrapper span:not(a)',
-                    '.pvs-entity__caption-wrapper div:not(a)'
-                ];
-                
-                let foundTitle = false;
-                for (const selector of titleSelectors) {
-                    const titleElements = firstEntry.querySelectorAll(selector);
-                    
-                    for (const titleElement of titleElements) {
-                        const titleText = titleElement.textContent.trim();
-                        
-                        // Skip if this element contains a link (likely a company name)
-                        if (titleElement.querySelector('a')) {
-                            continue;
-                        }
-                        
-                        // Check if this looks like a job title
-                        if (titleText.length > 2 && titleText.length < 100 &&
-                            !titleText.toLowerCase().includes('logo') &&
-                            !titleText.toLowerCase().includes('company') &&
-                            !titleText.toLowerCase().includes('see more') &&
-                            !titleText.toLowerCase().includes('show all') &&
-                            !titleText.toLowerCase().includes('full-time') &&
-                            !titleText.toLowerCase().includes('part-time') &&
-                            !titleText.toLowerCase().includes('·') &&
-                            !titleText.includes('yrs') &&
-                            !titleText.includes('mos') &&
-                            !titleText.toLowerCase().includes('omega') &&  // Avoid company name
-                            !titleText.toLowerCase().includes('masai') &&   // Avoid company name
-                            !titleText.toLowerCase().includes('services') &&
-                            !titleText.toLowerCase().includes('consultants') &&
-                            !titleText.toLowerCase().includes('private') &&
-                            !titleText.toLowerCase().includes('limited')) {
-                            
-                            // Additional validation for job titles
-                            const jobTitlePatterns = [
-                                /engineer/i, /developer/i, /manager/i, /director/i, 
-                                /analyst/i, /consultant/i, /designer/i, /lead/i,
-                                /specialist/i, /architect/i, /senior/i, /junior/i,
-                                /product/i, /software/i, /data/i, /full[- ]?stack/i,
-                                /frontend/i, /backend/i, /devops/i, /qa/i, /intern/i,
-                                /coordinator/i, /associate/i, /executive/i, /trainee/i,
-                                /student/i, /intern/i, /apprentice/i
-                            ];
-                            
-                            const hasJobPattern = jobTitlePatterns.some(pattern => pattern.test(titleText));
-                            
-                            if (hasJobPattern) {
-                                data.designation = titleText.replace(/\s+/g, ' ').trim();
-                                foundTitle = true;
-                                break;
-                            } else {
-                            }
-                        } else {
-                        }
-                    }
-                    if (foundTitle) break;
-                }
-                
-                // Extract company name - look for links to company pages
+            if (firstExperienceItem) {
+                // Extract company name - look for company links or bold company names
                 const companySelectors = [
-                    'a[href*="linkedin.com/company"]',
-                    'a[data-field*="company"]',
-                    '.pvs-entity__caption-wrapper a',
-                    '.pvs-entity__summary-info a'
+                    'a[data-field="experience_company_logo"] .hoverable-link-text.t-bold span[aria-hidden="true"]',
+                    'a[data-field="experience_company_logo"] .display-flex.align-items-center span[aria-hidden="true"]',
+                    '.hoverable-link-text.t-bold span[aria-hidden="true"]',
+                    'a[href*="linkedin.com/company"] span[aria-hidden="true"]'
                 ];
                 
-                let foundCompany = false;
-                for (const selector of companySelectors) {
-                    const companyElements = firstEntry.querySelectorAll(selector);
+                // First, try to extract company name from the secondary line pattern
+                // Look for "Company Name · Full-time" pattern in .t-14.t-normal spans
+                const secondaryPatterns = firstExperienceItem.querySelectorAll('.t-14.t-normal span[aria-hidden="true"]');
+                for (const element of secondaryPatterns) {
+                    const text = element.textContent.trim();
+                    if (text.includes(' · ')) {
+                        const companyPart = text.split(' · ')[0].trim();
+                        if (companyPart.length > 2 && companyPart.length < 80 && 
+                            !isPositionText(companyPart) && 
+                            !isDateText(companyPart)) {
+                            data.organisation = companyPart;
+                            break;
+                        }
+                    }
+                }
+                
+                // If company not found in secondary pattern, try original selectors
+                if (!data.organisation) {
+                    for (const selector of companySelectors) {
+                        const companyElement = firstExperienceItem.querySelector(selector);
+                        if (companyElement) {
+                            const companyText = companyElement.textContent.trim();
+                            
+                            // Validate that this is actually a company name and not a position
+                            if (companyText.length > 2 && companyText.length < 80 &&
+                                !isPositionText(companyText) &&
+                                !isDateText(companyText)) {
+                                data.organisation = companyText;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Extract position/designation from sub-components or direct structure
+                const subComponents = firstExperienceItem.querySelector('.pvs-entity__sub-components');
+                
+                if (subComponents) {
+                    // Multiple positions at same company - get the most recent (first) one
+                    const firstPosition = subComponents.querySelector('li .hoverable-link-text.t-bold span[aria-hidden="true"]');
+                    if (firstPosition) {
+                        const positionText = firstPosition.textContent.trim();
+                        if (positionText.length > 2 && positionText.length < 100 &&
+                            isPositionText(positionText) &&
+                            !isDateText(positionText)) {
+                            data.designation = positionText;
+                        }
+                    }
+                } else {
+                    // Single position - look for position text in main structure
+                    const positionSelectors = [
+                        '.hoverable-link-text.t-bold span[aria-hidden="true"]'
+                    ];
                     
-                    for (const companyElement of companyElements) {
-                        const companyText = companyElement.textContent.trim();
+                    const allPositionElements = firstExperienceItem.querySelectorAll(positionSelectors.join(', '));
+                    
+                    for (const element of allPositionElements) {
+                        const text = element.textContent.trim();
                         
-                        // Skip empty elements or elements with logo/image text
-                        if (!companyText || companyText.length < 3) {
+                        // Skip if this is the company name we already found
+                        if (data.organisation && text === data.organisation) {
                             continue;
                         }
                         
-                        // Clean up the company text
-                        let cleanCompanyText = companyText;
-                        
-                        // Remove common suffixes and noise
-                        cleanCompanyText = cleanCompanyText.replace(/\s*logo\s*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\s*image\s*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\s*icon\s*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\s*graphic\s*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\s*·.*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\s*-.*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\s*\|.*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/Full-time.*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/Part-time.*$/i, '');
-                        cleanCompanyText = cleanCompanyText.replace(/\d+\s*(yrs?|mos?|years?|months?).*$/i, '');
-                        
-                        // Remove duplicate text (e.g., "MasaiMasai" -> "Masai")
-                        const words = cleanCompanyText.split(/\s+/);
-                        if (words.length >= 2) {
-                            const firstWord = words[0];
-                            if (words.every(word => word === firstWord)) {
-                                cleanCompanyText = firstWord;
-                            }
-                        }
-                        
-                        cleanCompanyText = cleanCompanyText.trim();
-                        
-                        
-                        // Check if this looks like a valid company name
-                        if (cleanCompanyText.length > 2 && cleanCompanyText.length < 80 &&
-                            !cleanCompanyText.toLowerCase().includes('see more') &&
-                            !cleanCompanyText.toLowerCase().includes('show all') &&
-                            !cleanCompanyText.toLowerCase().includes('experience') &&
-                            !cleanCompanyText.toLowerCase().includes('employment') &&
-                            !cleanCompanyText.toLowerCase().includes('logo') &&
-                            !cleanCompanyText.toLowerCase().includes('image') &&
-                            cleanCompanyText.charAt(0) === cleanCompanyText.charAt(0).toUpperCase()) {
-                            
-                            data.organisation = cleanCompanyText;
-                            foundCompany = true;
-                            break;
-                        } else {
-                        }
-                    }
-                    if (foundCompany) break;
-                }
-            }
-        }
-        
-        // Fallback: Try to find position from other locations if experience section approach failed
-        if (!data.designation) {
-            const alternativeSelectors = [
-                'main [aria-labelledby*="experience"] h3',
-                'section[data-section="experience"] h3',
-                '.pv-profile-section.experience h3',
-                '.pvs-entity h3',
-                '.pvs-list__item h3',
-                'main h3[data-field*="title"]',
-                'main h3:not([aria-hidden="true"])',
-                '.pv-entity__summary-info h3:not([aria-hidden="true"])',
-                'h3[data-field="experience_company_title"]',
-                '.text-heading-xlarge.inline.t-24.v-align-middle.break-words', // Name selector as fallback
-                'h1 + div .text-body-medium', // Usually right after name
-                '.pv-text-details__left-panel .text-body-medium:first-of-type'
-            ];
-            
-            for (const selector of alternativeSelectors) {
-                const elements = document.querySelectorAll(selector);
-                
-                for (let i = 0; i < elements.length; i++) {
-                    const element = elements[i];
-                    const text = element.textContent.trim();
-                    
-                    if (text.length > 2 && text.length < 200 && 
-                        !text.toLowerCase().includes('company') && 
-                        !text.toLowerCase().includes('experience') &&
-                        !text.toLowerCase().includes('see more') &&
-                        !text.toLowerCase().includes('show all') &&
-                        !text.toLowerCase().includes('open to work') &&
-                        !text.toLowerCase().includes('followers') &&
-                        !text.toLowerCase().includes('connections') &&
-                        !text.toLowerCase().includes('·')) {
-                        
-                        // Check if this looks like "Job Title @ Company" format
-                        if (text.includes(' @ ')) {
-                            const parts = text.split(' @ ');
-                            const jobTitle = parts[0].trim();
-                            const company = parts[1].split(' | ')[0].trim(); // Take first company if multiple
-                            
-                            
-                            // Validate job title
-                            if (jobTitle.length > 2 && jobTitle.length < 100) {
-                                data.designation = jobTitle;
-                                if (!data.organisation && company.length > 2) {
-                                    // Clean company name
-                                    let cleanCompany = company.replace(/\.com$/, '').replace(/\.in$/, '').replace(/\.ai$/, '');
-                                    data.organisation = cleanCompany;
-                                }
-                                break;
-                            }
-                        } else {
-                            // Regular job title
+                        // Check if this looks like a position (job title)
+                        if (text.length > 2 && text.length < 100 &&
+                            (isPositionText(text) || hasPositionCharacteristics(text)) &&
+                            !isDateText(text)) {
                             data.designation = text;
                             break;
                         }
                     }
-                }
-                if (data.designation) break;
-            }
-        }
-        
-        // Last resort: Pattern matching in page text
-        if (!data.designation) {
-            const allElements = document.querySelectorAll('*');
-            const jobTitlePatterns = [
-                /engineer/i, /developer/i, /manager/i, /director/i, 
-                /analyst/i, /consultant/i, /designer/i, /lead/i,
-                /specialist/i, /architect/i, /senior/i, /junior/i,
-                /product/i, /software/i, /data/i, /full[- ]?stack/i,
-                /frontend/i, /backend/i, /devops/i, /qa/i, /intern/i
-            ];
-            
-            for (const element of allElements) {
-                if (element.children.length === 0) {
-                    const text = element.textContent.trim();
                     
-                    if (text.length > 5 && text.length < 80) {
-                        const hasJobTitlePattern = jobTitlePatterns.some(pattern => pattern.test(text));
-                        
-                        if (hasJobTitlePattern && 
-                            !text.toLowerCase().includes('company') &&
-                            !text.toLowerCase().includes('see more') &&
-                            !text.toLowerCase().includes('followers') &&
-                            !text.toLowerCase().includes('connections') &&
-                            !text.toLowerCase().includes('week ') &&
-                            !text.toLowerCase().includes('built') &&
-                            !text.toLowerCase().includes('🚀')) {
-                            
-                            data.designation = text;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Extract current organisation from Experience section
-        let currentOrganisation = null;
-        
-        let expSection = experienceSection;
-        if (!expSection) {
-            expSection = document.querySelector('[id*="experience"], [data-section="experience"], .experience-section, .pv-profile-section--experience, main section:has([id*="experience"])');
-        }
-        
-        if (expSection) {
-            const companySelectors = [
-                '.pvs-entity__path-node a[data-field="experience_company_logo"]',
-                '.pvs-entity__summary-info a[href*="linkedin.com/company"]',
-                '.pvs-entity a[data-control-name*="background_details_company"]',
-                '.pvs-entity__caption-wrapper a[href*="company"]',
-                '.pvs-list__item a[href*="company"]',
-                '.pvs-entity .pvs-entity__sub-components a',
-                '.pvs-entity a[aria-hidden="true"]',
-                'a[data-field*="company"]',
-                'a[href*="linkedin.com/company"]'
-            ];
-            
-            let foundOrganisation = false;
-            
-            for (const selector of companySelectors) {
-                const elements = expSection.querySelectorAll(selector);
-                
-                for (let i = 0; i < Math.min(elements.length, 5); i++) {
-                    const element = elements[i];
-                    const text = element.textContent.trim();
-                    
-                    if (text.length > 2 && text.length < 80 &&
-                        !text.toLowerCase().includes('show all') &&
-                        !text.toLowerCase().includes('see more') &&
-                        !text.toLowerCase().includes('open to work') &&
-                        !text.toLowerCase().includes('·') &&
-                        !text.toLowerCase().includes('experience') &&
-                        !text.toLowerCase().includes('employment') &&
-                        !text.toLowerCase().includes('company') &&
-                        !text.toLowerCase().includes('view profile') &&
-                        !text.toLowerCase().includes('linkedin') &&
-                        !text.toLowerCase().includes('logo')) {
-                        
-                        if (!text.includes('@') && !text.includes('http') && 
-                            text.charAt(0) === text.charAt(0).toUpperCase()) {
-                            
-                            let cleanCompanyName = text;
-                            
-                            // Remove employment type indicators
-                            cleanCompanyName = cleanCompanyName.replace(/\s*·\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-                            cleanCompanyName = cleanCompanyName.replace(/\s*-\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-                            cleanCompanyName = cleanCompanyName.replace(/\s*\|\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-                            
-                            // Remove duplicate company names
-                            const words = cleanCompanyName.split(/\s+/);
-                            if (words.length >= 4) {
-                                const firstHalf = words.slice(0, Math.floor(words.length / 2)).join(' ');
-                                const secondHalf = words.slice(Math.floor(words.length / 2)).join(' ');
-                                if (firstHalf === secondHalf) {
-                                    cleanCompanyName = firstHalf;
+                    // Alternative: Look for position in second structure pattern
+                    if (!data.designation) {
+                        const alternativePattern = firstExperienceItem.querySelector('.t-14.t-normal span[aria-hidden="true"]');
+                        if (alternativePattern) {
+                            const text = alternativePattern.textContent.trim();
+                            // Extract company from pattern like "OMEGA SERVICES · Full-time"
+                            if (text.includes(' · ')) {
+                                const companyPart = text.split(' · ')[0].trim();
+                                if (!data.organisation && companyPart.length > 2 && companyPart.length < 80) {
+                                    data.organisation = companyPart;
                                 }
                             }
-                            
-                            cleanCompanyName = cleanCompanyName.replace(/\s+/g, ' ').trim();
-                            
-                            
-                            if (cleanCompanyName.length > 1 && cleanCompanyName.length < 60) {
-                                currentOrganisation = cleanCompanyName;
-                                foundOrganisation = true;
-                                break;
+                        }
+                        
+                        // For single position companies, the position is usually the main bold text
+                        const mainBoldText = firstExperienceItem.querySelector('.hoverable-link-text.t-bold span[aria-hidden="true"]');
+                        if (mainBoldText && !data.designation) {
+                            const text = mainBoldText.textContent.trim();
+                            if (text !== data.organisation && (isPositionText(text) || hasPositionCharacteristics(text))) {
+                                data.designation = text;
                             }
                         }
-                    } else {
                     }
                 }
-                
-                if (foundOrganisation) break;
-            }
-            
-            // Fallback to text analysis if structured approach fails
-            if (!foundOrganisation) {
-                const allTextElements = expSection.querySelectorAll('*');
-                const companyCandidates = [];
-                
-                for (const element of allTextElements) {
-                    if (element.children.length === 0 && element.textContent.trim()) {
-                        const text = element.textContent.trim();
-                        if (text.length > 3 && text.length < 60 && 
-                            text.charAt(0) === text.charAt(0).toUpperCase()) {
-                            companyCandidates.push({
-                                text: text,
-                                element: element.tagName,
-                                href: element.href || 'none'
-                            });
-                        }
-                    }
-                }
-                
-                
-                for (let idx = 0; idx < Math.min(companyCandidates.length, 10); idx++) {
-                    const candidate = companyCandidates[idx];
-                    const text = candidate.text;
-                    
-                    if (!text.toLowerCase().includes('experience') &&
-                        !text.toLowerCase().includes('see more') &&
-                        !text.toLowerCase().includes('show all') &&
-                        !text.toLowerCase().includes('open to work') &&
-                        !text.toLowerCase().includes('full-stack') &&
-                        !text.toLowerCase().includes('engineer') &&
-                        !text.toLowerCase().includes('developer') &&
-                        !text.toLowerCase().includes('langchain') &&
-                        !text.toLowerCase().includes('week ') &&
-                        !text.toLowerCase().includes('🚀') &&
-                        !text.toLowerCase().includes('logo') &&
-                        !text.toLowerCase().includes('omega') &&  // Block specific problematic text
-                        !text.toLowerCase().includes('services') &&
-                        !text.toLowerCase().includes('consultants') &&
-                        !text.toLowerCase().includes('private limited') &&
-                        text.length > 3 && text.length < 50) {
-                        
-                        let cleanCompanyName = text;
-                        
-                        // Remove employment type indicators
-                        cleanCompanyName = cleanCompanyName.replace(/\s*·\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-                        cleanCompanyName = cleanCompanyName.replace(/\s*-\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-                        cleanCompanyName = cleanCompanyName.replace(/\s*\|\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-                        
-                        // Remove duplicate company names
-                        const words = cleanCompanyName.split(/\s+/);
-                        if (words.length >= 4) {
-                            const firstHalf = words.slice(0, Math.floor(words.length / 2)).join(' ');
-                            const secondHalf = words.slice(Math.floor(words.length / 2)).join(' ');
-                            if (firstHalf === secondHalf) {
-                                cleanCompanyName = firstHalf;
-                            }
-                        }
-                        
-                        cleanCompanyName = cleanCompanyName.trim();
-                        
-                        
-                        if (cleanCompanyName.length > 2 && cleanCompanyName.length < 50) {
-                            currentOrganisation = cleanCompanyName;
-                            foundOrganisation = true;
-                            break;
-                        }
-                    } else {
-                    }
-                }
-            }
-        }
-        
-        if (currentOrganisation) {
-            data.organisation = currentOrganisation;
-        }
-        
-        // Fallback to older selectors if still not found
-        if (!data.organisation) {
-            const orgSelectors = [
-                '.pv-entity__secondary-title',
-                'a[data-control-name="background_details_company"]',
-                '.pv-entity__company-summary-info h3 span[aria-hidden="true"]',
-                '.experience-item__subtitle a',
-                '.pv-entity__summary-info h4',
-                '.experience-group .pv-entity__company-summary-info h3',
-                '.pv-profile-section .pv-entity__company-summary-info',
-                '.text-body-medium:not(.break-words)', // Try to find company names
-                '.pv-text-details__left-panel .text-body-medium:nth-of-type(2)', // Second text element after name
-                'main section div[data-field*="company"]'
-            ];
-
-            for (const selector of orgSelectors) {
-                const orgElements = document.querySelectorAll(selector);
-                
-                for (let i = 0; i < Math.min(orgElements.length, 3); i++) {
-                    const orgElement = orgElements[i];
-                    const orgText = orgElement.textContent.trim();
-                    
-                    if (orgText) {
-                        // Apply same filtering as above but check if it looks like a job title vs company
-                        const looksLikeJobTitle = /^(associate|senior|junior|lead|principal|staff|director|manager|head|chief|vp|vice president|president|ceo|cto|cfo|architect|engineer|developer|analyst|scientist|specialist|consultant|coordinator|intern|trainee)/i.test(orgText);
-                        
-                        
-                        if (!orgText.toLowerCase().includes('logo') &&
-                            !orgText.toLowerCase().includes('omega') &&
-                            !orgText.toLowerCase().includes('services') &&
-                            !orgText.toLowerCase().includes('consultants') &&
-                            !orgText.toLowerCase().includes('private limited') &&
-                            !looksLikeJobTitle && // Skip if this looks like a job title
-                            orgText.length > 2 &&
-                            orgText.length < 80) {
-                            
-                            data.organisation = orgText;
-                            break;
-                        } else {
-                        }
-                    }
-                }
-                if (data.organisation) break;
-            }
-        }
-
-        // Try to extract from "Open to work" section
-        if (!data.organisation) {
-            const openToWorkSection = document.querySelector('.pv-open-to-card, .open-to-work');
-            if (openToWorkSection) {
-                const companyElements = openToWorkSection.querySelectorAll('.text-body-medium, .text-body-small');
-                for (let i = 0; i < companyElements.length; i++) {
-                    const element = companyElements[i];
-                    const text = element.textContent.trim();
-                    
-                    if (text.length > 2 && text.length < 100 && 
-                        !text.toLowerCase().includes('open to') &&
-                        !text.toLowerCase().includes('show details') &&
-                        !text.toLowerCase().includes('role') &&
-                        !text.toLowerCase().includes('omega') &&
-                        !text.toLowerCase().includes('services') &&
-                        !text.toLowerCase().includes('consultants') &&
-                        !text.toLowerCase().includes('private limited')) {
-                        data.organisation = text;
-                        break;
-                    }
-                }
-            } else {
-            }
-        }
-
-        // Try to extract organisation from designation if pattern matches "Title at Company"
-        if (!data.organisation && data.designation && data.designation.includes(' at ')) {
-            const parts = data.designation.split(' at ');
-            if (parts.length >= 2) {
-                data.organisation = parts[parts.length - 1].trim();
-                data.designation = parts.slice(0, -1).join(' at ').trim();
-            }
-        }
-
-        // Try to extract organisation from designation if pattern matches "Title @ Company"
-        if (!data.organisation && data.designation && data.designation.includes(' @ ')) {
-            const parts = data.designation.split(' @ ');
-            if (parts.length >= 2) {
-                let company = parts[parts.length - 1].split(' | ')[0].trim(); // Take first company if multiple
-                company = company.replace(/\.com$/, '').replace(/\.in$/, '').replace(/\.ai$/, '');
-                data.organisation = company;
-                data.designation = parts[0].trim(); // Keep only the job title
-            }
-        }
-
-        // Special handling for "Open to work" profiles
-        if (!data.organisation) {
-            const openToWorkIndicators = document.querySelectorAll('.pv-open-to-card, [data-test-id="open-to-work"]');
-            if (openToWorkIndicators.length > 0) {
-                data.organisation = "Freelancer / Open to work";
             }
         }
 
@@ -621,24 +169,6 @@ function extractLinkedInProfileData() {
             }
         }
 
-        // Extract location
-        const locationSelectors = [
-            '.text-body-small.inline.t-black--light.break-words',
-            '.pv-text-details__left-panel .text-body-small',
-            'span.text-body-small.inline.t-black--light.break-words'
-        ];
-
-        for (const selector of locationSelectors) {
-            const locationElement = document.querySelector(selector);
-            if (locationElement && locationElement.textContent.trim()) {
-                const locationText = locationElement.textContent.trim();
-                if (locationText.length < 50 && !locationText.includes('•')) {
-                    data.location = locationText;
-                    break;
-                }
-            }
-        }
-
         // Clean up the data
         if (data.fullName) {
             data.fullName = data.fullName.replace(/\s+/g, ' ').trim();
@@ -647,39 +177,66 @@ function extractLinkedInProfileData() {
             data.designation = data.designation.replace(/\s+/g, ' ').trim();
         }
         if (data.organisation) {
-            let cleanOrg = data.organisation.replace(/\s+/g, ' ').trim();
-            
-            // Remove common suffixes that indicate this is not a clean company name
-            cleanOrg = cleanOrg.replace(/\s*logo\s*$/i, '');
-            cleanOrg = cleanOrg.replace(/\s*image\s*$/i, '');
-            cleanOrg = cleanOrg.replace(/\s*icon\s*$/i, '');
-            cleanOrg = cleanOrg.replace(/\s*graphic\s*$/i, '');
-            
-            // Remove employment type suffixes that might have been missed
-            cleanOrg = cleanOrg.replace(/\s*·\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-            cleanOrg = cleanOrg.replace(/\s*-\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-            cleanOrg = cleanOrg.replace(/\s*\|\s*(Full-time|Part-time|Contract|Internship|Freelance|Temporary).*$/i, '');
-            
-            // Remove duplicate company names
-            const words = cleanOrg.split(/\s+/);
-            if (words.length >= 4) {
-                const firstHalf = words.slice(0, Math.floor(words.length / 2)).join(' ');
-                const secondHalf = words.slice(Math.floor(words.length / 2)).join(' ');
-                if (firstHalf === secondHalf) {
-                    cleanOrg = firstHalf;
-                }
-            }
-            
-            data.organisation = cleanOrg.trim();
+            data.organisation = data.organisation.replace(/\s+/g, ' ').trim();
         }
 
-        
         return data;
 
     } catch (error) {
         console.error('Error extracting LinkedIn profile data:', error);
         return data;
     }
+}
+
+// Helper function to identify if text looks like a job position
+function isPositionText(text) {
+    const positionKeywords = [
+        'engineer', 'developer', 'manager', 'director', 'analyst', 'consultant',
+        'designer', 'lead', 'specialist', 'architect', 'senior', 'junior',
+        'product', 'software', 'data', 'full-stack', 'frontend', 'backend',
+        'devops', 'qa', 'intern', 'coordinator', 'associate', 'executive',
+        'trainee', 'student', 'apprentice', 'curriculum', 'instructor',
+        'marketing', 'support', 'customer', 'digital', 'pedagogy'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    return positionKeywords.some(keyword => lowerText.includes(keyword));
+}
+
+// Helper function to identify position-like characteristics
+function hasPositionCharacteristics(text) {
+    const positionIndicators = [
+        'ceo', 'cto', 'cfo', 'coo', 'founder', 'co-founder', 'president',
+        'vice president', 'vp', 'head', 'chief', 'owner', 'partner',
+        'supervisor', 'team lead', 'leader', 'administrator', 'officer'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    
+    // Check for executive/leadership positions
+    const hasExecutiveTitle = positionIndicators.some(indicator => lowerText.includes(indicator));
+    
+    // Check for typical position patterns like "Senior X", "Junior X", etc.
+    const hasPositionPattern = /^(senior|junior|lead|principal|staff|associate|assistant|deputy|interim)\s/i.test(text);
+    
+    // Check for "&" which often appears in titles like "Co-founder & CEO"
+    const hasAmpersandPattern = text.includes('&') && text.split('&').length === 2;
+    
+    return hasExecutiveTitle || hasPositionPattern || hasAmpersandPattern;
+}
+
+// Helper function to identify if text looks like a date/duration
+function isDateText(text) {
+    const datePatterns = [
+        /\d+\s*(yr|year|mo|month|mos)/i,
+        /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i,
+        /\d{4}\s*-\s*\d{4}/,
+        /present/i,
+        /full-time|part-time|contract|internship|freelance/i,
+        /·/
+    ];
+    
+    return datePatterns.some(pattern => pattern.test(text));
 }
 
 // Wait for the page to be fully loaded

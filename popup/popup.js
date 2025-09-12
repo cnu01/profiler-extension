@@ -257,40 +257,57 @@ function showInitialProfileData(data) {
 }
 
 function showHunterProfileData(data) {
-    // Update profile information with Hunter.io data
-    const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+    // Update profile information with Hunter.io data only
+    const fullName = (data.first_name && data.last_name) ? 
+        `${data.first_name} ${data.last_name}`.trim() : 
+        null;
     
     if (elements.profileName) {
-        elements.profileName.textContent = fullName || 'Unknown';
+        // Use Hunter.io name if available, otherwise use LinkedIn name for display only
+        elements.profileName.textContent = fullName || currentProfileData.linkedinFullName || 'Unknown';
     }
     
     if (elements.profileTitle) {
+        // Use Hunter.io data for title, fallback to LinkedIn data only for display
         const hunterPosition = data.position;
         const hunterCompany = data.company;
         
-        // Fall back to LinkedIn data if Hunter.io position is not available
-        const position = hunterPosition || currentProfileData.linkedinDesignation || 'Not specified';
-        const company = hunterCompany || currentProfileData.linkedinOrganisation || 'Not specified';
-        
-        if (position !== 'Not specified' && company !== 'Not specified') {
-            elements.profileTitle.textContent = `${position} at ${company}`;
-        } else if (position !== 'Not specified') {
-            elements.profileTitle.textContent = position;
-        } else if (company !== 'Not specified') {
-            elements.profileTitle.textContent = company;
+        if (hunterPosition && hunterCompany) {
+            elements.profileTitle.textContent = `${hunterPosition} at ${hunterCompany}`;
+        } else if (hunterPosition) {
+            elements.profileTitle.textContent = hunterPosition;
+        } else if (hunterCompany) {
+            elements.profileTitle.textContent = hunterCompany;
         } else {
-            elements.profileTitle.textContent = 'Hunter.io data retrieved';
+            // Fall back to LinkedIn data only for visual display
+            const linkedinPosition = currentProfileData.linkedinDesignation;
+            const linkedinCompany = currentProfileData.linkedinOrganisation;
+            
+            if (linkedinPosition && linkedinCompany) {
+                elements.profileTitle.textContent = `${linkedinPosition} at ${linkedinCompany}`;
+            } else if (linkedinPosition) {
+                elements.profileTitle.textContent = linkedinPosition;
+            } else if (linkedinCompany) {
+                elements.profileTitle.textContent = linkedinCompany;
+            } else {
+                elements.profileTitle.textContent = 'Hunter.io data retrieved';
+            }
         }
     }
     
-    // Update Hunter.io specific fields
+    // Update Hunter.io specific fields - STRICT: Only use Hunter.io data
     if (elements.fullNameValue) {
-        elements.fullNameValue.textContent = fullName || 'Not available';
+        elements.fullNameValue.textContent = fullName || 'Not Found';
+        if (fullName) {
+            elements.copyFullName.style.display = 'flex';
+        } else {
+            elements.copyFullName.style.display = 'none';
+        }
     }
     
     if (elements.emailValue) {
-        elements.emailValue.textContent = data.email || 'Not available';
-        if (data.email && data.email !== 'Not available') {
+        elements.emailValue.textContent = data.email || 'Not Found';
+        if (data.email) {
             elements.copyEmail.style.display = 'flex';
         } else {
             elements.copyEmail.style.display = 'none';
@@ -298,37 +315,50 @@ function showHunterProfileData(data) {
     }
     
     if (elements.companyValue) {
-        elements.companyValue.textContent = data.company || 'Not available';
+        elements.companyValue.textContent = data.company || 'Not Found';
+        if (data.company) {
+            elements.copyCompany.style.display = 'flex';
+        } else {
+            elements.copyCompany.style.display = 'none';
+        }
     }
     
     if (elements.positionValue) {
-        elements.positionValue.textContent = data.position || 'Not available';
+        elements.positionValue.textContent = data.position || 'Not Found';
+        if (data.position) {
+            elements.copyPosition.style.display = 'flex';
+        } else {
+            elements.copyPosition.style.display = 'none';
+        }
     }
     
     showState('success');
 }
 
 function showNoDataFound(message) {
-    // Update fields to show no data found
+    // Update Hunter.io fields to show no data found - STRICT: No fallback to scraped data
     if (elements.fullNameValue) {
-        elements.fullNameValue.textContent = 'Not found';
+        elements.fullNameValue.textContent = 'Not Found';
+        elements.copyFullName.style.display = 'none';
     }
     
     if (elements.emailValue) {
-        elements.emailValue.textContent = 'Not found';
+        elements.emailValue.textContent = 'Not Found';
         elements.copyEmail.style.display = 'none';
     }
     
     if (elements.companyValue) {
-        elements.companyValue.textContent = 'Not found';
+        elements.companyValue.textContent = 'Not Found';
+        elements.copyCompany.style.display = 'none';
     }
     
     if (elements.positionValue) {
-        elements.positionValue.textContent = 'Not found';
+        elements.positionValue.textContent = 'Not Found';
+        elements.copyPosition.style.display = 'none';
     }
     
     if (elements.profileTitle) {
-        // Fall back to LinkedIn data for profile title when Hunter.io data is not found
+        // For visual display only, use LinkedIn data if available
         const linkedinPosition = currentProfileData.linkedinDesignation;
         const linkedinCompany = currentProfileData.linkedinOrganisation;
         

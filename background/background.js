@@ -84,13 +84,13 @@ async function handleHunterDataFetch(profileData, sendResponse) {
             sendResponse({ 
                 success: true, 
                 data: {
-                    first_name: hunterData.first_name || firstName,
-                    last_name: hunterData.last_name || lastName,
-                    email: hunterData.email || 'Not available',
-                    company: hunterData.company || company,
-                    position: hunterData.position || 'Not specified',
+                    first_name: hunterData.first_name || null,
+                    last_name: hunterData.last_name || null,
+                    email: hunterData.email || null,
+                    company: hunterData.company || null,
+                    position: hunterData.position || null,
                     score: hunterData.score || 0,
-                    domain: hunterData.domain || '',
+                    domain: hunterData.domain || null,
                     verification: hunterData.verification || null
                 }
             });
