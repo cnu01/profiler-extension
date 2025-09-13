@@ -81,7 +81,7 @@ async function handleHunterDataFetch(profileData, sendResponse) {
         const company = profileData.organisation?.trim() || null;
         const domain = profileData.domain?.trim() || null;
         
-        // Try Hunter.io email finder API with both company and domain parameters
+        // Try Hunter.io email finder API with fallback strategies
         const hunterData = await fetchHunterEmailFinder(company, domain, firstName, lastName, apiKey);
         
         if (hunterData) {
@@ -116,26 +116,34 @@ async function handleHunterDataFetch(profileData, sendResponse) {
     }
 }
 
-// Fetch data from Hunter.io email finder API
+// Fetch data from Hunter.io email finder API with fallback mechanism
 async function fetchHunterEmailFinder(company, domain, firstName, lastName, apiKey) {
+    const strategies = [
+        { company, domain: null },   // Strategy 1: company only
+        { company: null, domain }    // Strategy 2: domain only
+    ];
+
+    for (const { company, domain } of strategies) {
+        if ((company && company.length >= 3 && company !== 'Not specified' && company !== 'Freelancer / Open to work' && company !== 'LangChain') || domain) {
+            const result = await makeHunterApiCall(firstName, lastName, apiKey, company, domain);
+            if (result) return result;
+        }
+    }
+
+    return null;
+}
+
+// Helper function to make Hunter.io API calls
+async function makeHunterApiCall(firstName, lastName, apiKey, company = null, domain = null) {
     try {
-        // Build URL with available parameters
         let url = `https://api.hunter.io/v2/email-finder?first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&api_key=${apiKey}`;
         
-        // Add company parameter if available
-        if (company && company.length >= 3 && 
-            company !== 'Not specified' && 
-            company !== 'Freelancer / Open to work' && 
-            company !== 'LangChain') {
+        if (company) {
             url += `&company=${encodeURIComponent(company)}`;
         }
-        
-        // Add domain parameter if available
         if (domain) {
             url += `&domain=${encodeURIComponent(domain)}`;
         }
-        
-        console.log('Hunter.io API call with:', { company, domain, firstName, lastName });
 
         const response = await fetch(url);
         const data = await response.json();
@@ -150,14 +158,19 @@ async function fetchHunterEmailFinder(company, domain, firstName, lastName, apiK
             }
         }
 
-        if (data.data) {
+        // Require only email (names may be null for role-based emails)
+        if (data.data && data.data.email) {
             return data.data;
         }
 
         return null;
 
     } catch (error) {
-        throw error;
+        if (error.message.includes('Invalid Hunter.io API key') || error.message.includes('rate limit exceeded')) {
+            throw error; // critical errors bubble up
+        }
+        console.error('Hunter.io API call failed:', error.message);
+        return null; // treat as no data, allow fallback strategy
     }
 }
 
@@ -169,36 +182,26 @@ async function handleApiKeyTest(apiKey, sendResponse) {
         const data = await response.json();
         
         if (response.ok && data.data) {
-            // Parse the actual Hunter.io API response structure
             const accountData = data.data;
             
             sendResponse({ 
                 success: true, 
                 data: {
-                    // User information
                     first_name: accountData.first_name || 'Unknown',
                     last_name: accountData.last_name || 'Unknown',
                     email: accountData.email || 'Unknown',
-                    
-                    // Plan information
                     plan_name: accountData.plan_name || 'Unknown',
                     plan_level: accountData.plan_level || 0,
                     reset_date: accountData.reset_date || 'Unknown',
                     team_id: accountData.team_id || 0,
-                    
-                    // Usage information - handle both old and new response structures
                     requests_used: accountData.requests?.searches?.used || accountData.calls?.used || 0,
                     requests_available: accountData.requests?.searches?.available || accountData.calls?.available || 0,
-                    
-                    // Detailed request breakdown
                     searches_used: accountData.requests?.searches?.used || 0,
                     searches_available: accountData.requests?.searches?.available || 0,
                     verifications_used: accountData.requests?.verifications?.used || 0,
                     verifications_available: accountData.requests?.verifications?.available || 0,
                     credits_used: accountData.requests?.credits?.used || 0,
                     credits_available: accountData.requests?.credits?.available || 0,
-                    
-                    // Legacy support for older API response format
                     plan: accountData.plan_name || accountData.plan?.name || 'Unknown'
                 }
             });
@@ -218,4 +221,3 @@ async function handleApiKeyTest(apiKey, sendResponse) {
         });
     }
 }
-
