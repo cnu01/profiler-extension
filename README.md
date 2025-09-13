@@ -6,10 +6,11 @@ A modern Chrome extension that fetches LinkedIn profile data from Hunter.io API 
 
 ## 🚀 Features
 
-- **Hunter.io Integration**: Fetches comprehensive profile data from Hunter.io API with dual search strategy.
+- **Hunter.io Integration**: Fetches comprehensive profile data from Hunter.io API with company-first search strategy.
 - **Complete Profile Data**: Returns Full Name, Email, Company/Organization, and Position.
-- **Domain Extraction**: Automatically extracts company domains from LinkedIn for enhanced Hunter.io lookup.
-- **Dual Search Strategy**: Uses both company name AND domain for maximum data discovery success.
+- **Domain Extraction**: Automatically extracts company domains from LinkedIn for enhanced fallback lookup.
+- **Smart Fallback Strategy**: Tries company name first, then automatically falls back to domain if data is incomplete.
+- **Data Quality Validation**: Strict null-value checking ensures only complete, verified data is returned.
 - **JSON Export**: Export complete profile data as downloadable JSON files with user's name.
 - **LinkedIn Photo Support**: Displays LinkedIn profile photos alongside Hunter.io data.
 - **Modern Minimalist UI**: Clean, aesthetic interface with Nord blue accent color (#5E81AC).
@@ -112,10 +113,11 @@ The extension features a minimalist interface with:
 - Perfect for data analysis, CRM import, or backup purposes
 
 #### Enhanced Data Discovery
-- **Dual Search**: Uses both company name ("Masai School") and domain ("masaischool.com") 
-- **Smart Fallback**: If company name search fails, automatically tries domain search
-- **Domain Extraction**: Automatically extracts domains from LinkedIn company URLs
-- **Higher Success Rate**: Significantly improved data discovery compared to single search method
+- **Company-First Strategy**: Prioritizes company name search for more accurate results
+- **Smart Fallback**: Automatically tries domain search when company search returns incomplete data
+- **Strict Validation**: Only accepts responses with complete email, first_name, and last_name data
+- **Domain Extraction**: Automatically extracts domains from LinkedIn company URLs when needed
+- **Higher Data Quality**: Ensures only verified, complete profiles are returned
 
 ### Settings Access
 - Click the settings button (⚙️) in the top-right corner of the popup
@@ -186,17 +188,23 @@ The exported JSON file contains comprehensive profile data:
 ```
 
 ### Advanced Search Strategy
-The extension uses a sophisticated dual-search approach:
+The extension uses an optimized company-first search approach with intelligent fallback:
 
-1. **Primary Search**: Company name extraction from LinkedIn
+1. **Primary Search (Company First)**: Company name extraction from LinkedIn
    - `api.hunter.io/v2/email-finder?company=Masai%20School&first_name=John&last_name=Doe`
+   - Validates response for non-null email, first_name, and last_name in the data object
 
-2. **Fallback Search**: Domain extraction from LinkedIn company URLs
+2. **Fallback Search (Domain)**: If company search returns null data, automatically tries domain
    - Extracts from `/company/masaischool/` → `masaischool.com`
    - `api.hunter.io/v2/email-finder?domain=masaischool.com&first_name=John&last_name=Doe`
+   - Only triggered when company search returns null values for required fields
 
-3. **Combined Search**: Both parameters in single API call
-   - `api.hunter.io/v2/email-finder?company=Masai%20School&domain=masaischool.com&first_name=John&last_name=Doe`
+3. **Strict Validation**: Ensures data quality by checking for null values
+   - Validates `data.email !== null`
+   - Automatically falls back to domain search if any required field is null
+   - Prioritizes complete, verified data over partial responses
+
+This company-first approach with strict validation significantly increases data discovery success rates and ensures higher quality results.
 
 This approach significantly increases data discovery success rates.
 
